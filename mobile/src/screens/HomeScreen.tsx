@@ -1,12 +1,35 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SearchBar from '../components/SearchBar';
 import CategoryItem from '../components/CategoryItem';
 import RestaurantCard from '../components/RestaurantCard';
-import { dummyRestaurants, categories } from '../data/dummy';
+import { categories } from '../data/dummy';
+import { getRestaurants } from '../services/api';
 
 export default function HomeScreen({ navigation }: any) {
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchRestaurants();
+  }, []);
+
+  const fetchRestaurants = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getRestaurants();
+      setRestaurants(response.data.data);
+    } catch (err) {
+      console.error('Error fetching restaurants:', err);
+      setError('Gagal terhubung ke server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -43,15 +66,26 @@ export default function HomeScreen({ navigation }: any) {
         </View>
 
         <Text style={styles.sectionTitle}>Restoran Terdekat</Text>
-        {dummyRestaurants.map((restaurant) => (
-          <RestaurantCard
-            key={restaurant.id}
-            restaurant={restaurant}
-            onPress={() =>
-              navigation.navigate('RestaurantDetail', { restaurant })
-            }
-          />
-        ))}
+        {loading ? (
+          <ActivityIndicator size="large" color="#00A651" style={{ marginTop: 20 }} />
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchRestaurants}>
+              <Text style={styles.retryText}>Coba Lagi</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          restaurants.map((restaurant) => (
+            <RestaurantCard
+              key={restaurant.id}
+              restaurant={restaurant}
+              onPress={() =>
+                navigation.navigate('RestaurantDetail', { restaurant })
+              }
+            />
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -117,5 +151,26 @@ const styles = StyleSheet.create({
     color: '#E8F5E9',
     fontSize: 14,
     marginTop: 4,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    marginTop: 10,
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: '#00A651',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });

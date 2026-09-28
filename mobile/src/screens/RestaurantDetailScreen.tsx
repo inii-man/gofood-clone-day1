@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -14,7 +15,7 @@ import {
   useNavigation,
 } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { dummyFoodItems } from '../data/dummy';
+import { getMenu } from '../services/api';
 
 type DetailRouteProp = RouteProp<
   RootStackParamList,
@@ -26,9 +27,27 @@ export default function RestaurantDetailScreen() {
   const navigation = useNavigation();
   const { restaurant } = route.params;
 
-  const menuItems = dummyFoodItems.filter(
-    (item) => item.restaurantId === restaurant.id
-  );
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchMenu();
+  }, []);
+
+  const fetchMenu = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getMenu(restaurant.id);
+      setMenuItems(response.data.data);
+    } catch (err) {
+      console.error('Error fetching menu:', err);
+      setError('Gagal memuat menu dari server');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -61,28 +80,39 @@ export default function RestaurantDetailScreen() {
 
         <Text style={styles.menuTitle}>Menu Populer</Text>
 
-        {menuItems.map((item) => (
-          <View key={item.id} style={styles.menuItem}>
-            <View style={styles.menuInfo}>
-              <Text style={styles.menuName}>{item.name}</Text>
-              <Text style={styles.menuDesc} numberOfLines={2}>
-                {item.description}
-              </Text>
-              <Text style={styles.menuPrice}>
-                Rp {item.price.toLocaleString()}
-              </Text>
-            </View>
-
-            <Image
-              source={{ uri: item.image }}
-              style={styles.menuImage}
-            />
-
-            <TouchableOpacity style={styles.addButton}>
-              <Ionicons name="add" size={20} color="#00A651" />
+        {loading ? (
+          <ActivityIndicator size="large" color="#00A651" style={{ marginTop: 20 }} />
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchMenu}>
+              <Text style={styles.retryText}>Coba Lagi</Text>
             </TouchableOpacity>
           </View>
-        ))}
+        ) : (
+          menuItems.map((item) => (
+            <View key={item.id} style={styles.menuItem}>
+              <View style={styles.menuInfo}>
+                <Text style={styles.menuName}>{item.name}</Text>
+                <Text style={styles.menuDesc} numberOfLines={2}>
+                  {item.description}
+                </Text>
+                <Text style={styles.menuPrice}>
+                  Rp {item.price.toLocaleString()}
+                </Text>
+              </View>
+
+              <Image
+                source={{ uri: item.image }}
+                style={styles.menuImage}
+              />
+
+              <TouchableOpacity style={styles.addButton}>
+                <Ionicons name="add" size={20} color="#00A651" />
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
       </ScrollView>
 
       <TouchableOpacity style={styles.cartButton}>
@@ -231,5 +261,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     marginLeft: 8,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    marginTop: 10,
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: '#00A651',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
