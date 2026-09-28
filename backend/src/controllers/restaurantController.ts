@@ -33,7 +33,7 @@ export const getRestaurantById = async (
   res: Response
 ) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const restaurant =
       await prisma.restaurant.findUnique({
@@ -67,7 +67,7 @@ export const getMenuByRestaurant = async (
   res: Response
 ) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const menuItems =
       await prisma.menuItem.findMany({
