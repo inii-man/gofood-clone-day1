@@ -8,24 +8,33 @@ import { categories } from '../data/dummy';
 import { getRestaurants } from '../services/api';
 
 export default function HomeScreen({ navigation }: any) {
+  // State untuk menyimpan daftar restoran dari API
   const [restaurants, setRestaurants] = useState<any[]>([]);
+  // State untuk menandakan apakah data sedang di-load (proses fetching)
   const [loading, setLoading] = useState(true);
+  // State untuk menyimpan pesan error jika koneksi ke server gagal
   const [error, setError] = useState<string | null>(null);
 
+  // useEffect dipanggil otomatis saat layar HomeScreen pertama kali dibuka
   useEffect(() => {
     fetchRestaurants();
   }, []);
 
+  // Fungsi untuk mengambil data restoran dari backend
   const fetchRestaurants = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); // Tampilkan indikator loading
+    setError(null);   // Reset error sebelumnya (jika ada)
     try {
+      // Memanggil fungsi getRestaurants() dari services/api.ts
       const response = await getRestaurants();
+      // Menyimpan data yang didapat ke state restaurants
       setRestaurants(response.data.data);
     } catch (err) {
       console.error('Error fetching restaurants:', err);
+      // Menampilkan pesan error jika server mati atau ada kendala jaringan
       setError('Gagal terhubung ke server');
     } finally {
+      // Sembunyikan indikator loading setelah proses selesai (berhasil/gagal)
       setLoading(false);
     }
   };
@@ -46,15 +55,19 @@ export default function HomeScreen({ navigation }: any) {
         </View>
       </View>
 
+      {/* ScrollView digunakan agar halaman bisa di-scroll ke bawah */}
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Komponen SearchBar (belum berfungsi untuk pencarian sungguhan, hanya UI) */}
         <SearchBar placeholder="Cari restoran atau makanan..." />
 
         <Text style={styles.sectionTitle}>Kategori</Text>
+        {/* Daftar kategori yang bisa di-scroll menyamping (horizontal) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
         >
+          {/* Looping data kategori dari dummy data */}
           {categories.map((cat) => (
             <CategoryItem key={cat.id} name={cat.name} icon={cat.icon} />
           ))}
@@ -66,9 +79,13 @@ export default function HomeScreen({ navigation }: any) {
         </View>
 
         <Text style={styles.sectionTitle}>Restoran Terdekat</Text>
+        
+        {/* Conditional Rendering: Menampilkan UI berdasarkan state saat ini */}
         {loading ? (
+          // Jika loading = true, tampilkan animasi berputar (ActivityIndicator)
           <ActivityIndicator size="large" color="#00A651" style={{ marginTop: 20 }} />
         ) : error ? (
+          // Jika error = true (ada pesan error), tampilkan tombol Coba Lagi
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity style={styles.retryButton} onPress={fetchRestaurants}>
@@ -76,10 +93,12 @@ export default function HomeScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
         ) : (
+          // Jika sukses (loading false & error null), tampilkan daftar restoran
           restaurants.map((restaurant) => (
             <RestaurantCard
               key={restaurant.id}
               restaurant={restaurant}
+              // Navigasi ke halaman RestaurantDetail saat kartu ditekan, membawa data restaurant
               onPress={() =>
                 navigation.navigate('RestaurantDetail', { restaurant })
               }

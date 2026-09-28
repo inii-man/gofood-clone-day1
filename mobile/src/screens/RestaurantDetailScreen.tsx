@@ -23,36 +23,50 @@ type DetailRouteProp = RouteProp<
 >;
 
 export default function RestaurantDetailScreen() {
+  // Mengambil informasi route untuk mendapatkan parameter yang dikirim dari HomeScreen
   const route = useRoute<DetailRouteProp>();
+  // Hook navigasi untuk melakukan aksi seperti 'kembali ke halaman sebelumnya'
   const navigation = useNavigation();
+  // Mengambil objek 'restaurant' dari parameter navigasi
   const { restaurant } = route.params;
 
+  // State untuk menyimpan daftar menu dari API
   const [menuItems, setMenuItems] = useState<any[]>([]);
+  // State untuk melacak status loading
   const [loading, setLoading] = useState(true);
+  // State untuk menangani pesan error koneksi
   const [error, setError] = useState<string | null>(null);
 
+  // Otomatis dipanggil saat layar Detail dibuka
   useEffect(() => {
     fetchMenu();
   }, []);
 
+  // Fungsi untuk mengambil data menu berdasarkan ID restoran
   const fetchMenu = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); // Tampilkan indikator loading
+    setError(null);   // Bersihkan error sebelumnya
     try {
+      // Panggil API getMenu dengan melempar ID restoran
       const response = await getMenu(restaurant.id);
+      // Simpan hasil data menu ke state
       setMenuItems(response.data.data);
     } catch (err) {
       console.error('Error fetching menu:', err);
+      // Tampilkan pesan error jika server bermasalah
       setError('Gagal memuat menu dari server');
     } finally {
+      // Sembunyikan indikator loading
       setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
+      {/* Gambar utama restoran di bagian atas layar */}
       <Image source={{ uri: restaurant.image }} style={styles.headerImage} />
 
+      {/* Tombol Back untuk kembali ke HomeScreen */}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
@@ -61,6 +75,7 @@ export default function RestaurantDetailScreen() {
       </TouchableOpacity>
 
       <ScrollView style={styles.content}>
+        {/* Bagian informasi nama restoran, rating, waktu, ongkir, dll */}
         <View style={styles.infoSection}>
           <Text style={styles.name}>{restaurant.name}</Text>
           <View style={styles.row}>
@@ -80,16 +95,19 @@ export default function RestaurantDetailScreen() {
 
         <Text style={styles.menuTitle}>Menu Populer</Text>
 
+        {/* Conditional Rendering: Menampilkan daftar menu, loading, atau error */}
         {loading ? (
           <ActivityIndicator size="large" color="#00A651" style={{ marginTop: 20 }} />
         ) : error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
+            {/* Memanggil ulang fetchMenu jika tombol Coba Lagi ditekan */}
             <TouchableOpacity style={styles.retryButton} onPress={fetchMenu}>
               <Text style={styles.retryText}>Coba Lagi</Text>
             </TouchableOpacity>
           </View>
         ) : (
+          // Looping data menu makanan
           menuItems.map((item) => (
             <View key={item.id} style={styles.menuItem}>
               <View style={styles.menuInfo}>
@@ -107,6 +125,7 @@ export default function RestaurantDetailScreen() {
                 style={styles.menuImage}
               />
 
+              {/* Tombol Tambah ke Keranjang (fungsinya belum diimplementasi) */}
               <TouchableOpacity style={styles.addButton}>
                 <Ionicons name="add" size={20} color="#00A651" />
               </TouchableOpacity>
@@ -115,6 +134,7 @@ export default function RestaurantDetailScreen() {
         )}
       </ScrollView>
 
+      {/* Tombol besar di bawah untuk melihat keranjang (statis) */}
       <TouchableOpacity style={styles.cartButton}>
         <Ionicons name="cart" size={20} color="#fff" />
         <Text style={styles.cartText}>Lihat Keranjang</Text>
