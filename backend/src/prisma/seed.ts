@@ -7,7 +7,7 @@ async function main() {
   await prisma.menuItem.deleteMany();
   await prisma.restaurant.deleteMany();
 
-  // Seed default User Budi (password: password123)
+  // Seed default User Budi (CUSTOMER)
   const passwordHash = await bcrypt.hash('password123', 10);
   const budi = await prisma.user.upsert({
     where: { email: 'budi@mail.com' },
@@ -21,6 +21,22 @@ async function main() {
       email: 'budi@mail.com',
       passwordHash,
       role: 'CUSTOMER',
+    },
+  });
+
+  // Seed default Driver Pak Joko (DRIVER)
+  const driver = await prisma.user.upsert({
+    where: { email: 'driver@mail.com' },
+    update: {
+      name: 'Pak Joko (Driver)',
+      passwordHash,
+      role: 'DRIVER',
+    },
+    create: {
+      name: 'Pak Joko (Driver)',
+      email: 'driver@mail.com',
+      passwordHash,
+      role: 'DRIVER',
     },
   });
 
@@ -88,7 +104,8 @@ async function main() {
     });
 
   console.log('Seed completed:', {
-    user: { email: budi.email, name: budi.name, defaultPassword: 'password123' },
+    customer: { email: budi.email, name: budi.name, role: budi.role, defaultPassword: 'password123' },
+    driver: { email: driver.email, name: driver.name, role: driver.role, defaultPassword: 'password123' },
     nasgor,
     burger,
   });

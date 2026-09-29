@@ -38,11 +38,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const storedToken = await AsyncStorage.getItem('auth_token');
         const storedUser = await AsyncStorage.getItem('auth_user');
 
-        if (storedToken) {
+        if (storedToken && storedToken !== 'null' && storedToken !== 'undefined') {
           setToken(storedToken);
         }
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        if (storedUser && storedUser !== 'null' && storedUser !== 'undefined') {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (err) {
+            console.warn('[AUTH] Error parsing storedUser from AsyncStorage:', err);
+          }
         }
       } catch (e) {
         console.error('Failed to restore auth session', e);
@@ -61,12 +65,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
 
-    const { token: receivedToken, user: receivedUser } = response.data;
-    await AsyncStorage.setItem('auth_token', receivedToken);
-    await AsyncStorage.setItem('auth_user', JSON.stringify(receivedUser));
+    const resData = response.data;
+    // Support both { token, user } and { data: { token, user } } formats
+    const receivedToken = resData?.token || resData?.data?.token;
+    const receivedUser = resData?.user || resData?.data?.user;
 
+    if (!receivedToken) {
+      console.warn('⚠️ [AUTH] Response login tidak memuat token:', resData);
+      throw new Error('Token login tidak diterima dari server.');
+    }
+
+    await AsyncStorage.setItem('auth_token', String(receivedToken));
     setToken(receivedToken);
-    setUser(receivedUser);
+
+    if (receivedUser) {
+      await AsyncStorage.setItem('auth_user', JSON.stringify(receivedUser));
+      setUser(receivedUser);
+    }
   };
 
   const register = async (name: string, email: string, password: string) => {

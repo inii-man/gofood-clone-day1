@@ -62,8 +62,14 @@ export default function AppNavigator() {
               options={{ animation: 'slide_from_right' }}
             />
           </>
+        ) : user.role === 'DRIVER' ? (
+          // Driver App Stack
+          <>
+            <Stack.Screen name="DriverSimulator" component={DriverSimulatorScreen} />
+            <Stack.Screen name="Home" component={HomeScreen} />
+          </>
         ) : (
-          // Main App Stack (Slide 1, 2, 57, 58)
+          // Customer Main App Stack (Slide 1, 2, 57, 58)
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen

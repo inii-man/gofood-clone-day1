@@ -87,6 +87,63 @@ export default function LoginScreen({ navigation }: any) {
             </View>
           </View>
 
+          <View style={styles.demoButtonsContainer}>
+            <Text style={styles.demoTitle}>Akun Demo Cepat:</Text>
+            <View style={styles.demoRow}>
+              <TouchableOpacity
+                style={[
+                  styles.demoChip,
+                  email === 'budi@mail.com' && styles.demoChipActive,
+                ]}
+                onPress={() => {
+                  setEmail('budi@mail.com');
+                  setPassword('password123');
+                }}
+              >
+                <FontAwesome5
+                  name="user"
+                  size={12}
+                  color={email === 'budi@mail.com' ? '#fff' : '#00AA13'}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={[
+                    styles.demoChipText,
+                    email === 'budi@mail.com' && styles.demoChipTextActive,
+                  ]}
+                >
+                  Customer (Budi)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.demoChip,
+                  email === 'driver@mail.com' && styles.demoChipActive,
+                ]}
+                onPress={() => {
+                  setEmail('driver@mail.com');
+                  setPassword('password123');
+                }}
+              >
+                <FontAwesome5
+                  name="motorcycle"
+                  size={12}
+                  color={email === 'driver@mail.com' ? '#fff' : '#00AA13'}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={[
+                    styles.demoChipText,
+                    email === 'driver@mail.com' && styles.demoChipTextActive,
+                  ]}
+                >
+                  Driver (Pak Joko)
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleLogin}
@@ -193,6 +250,48 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: '#1C1C1C',
+  },
+  demoButtonsContainer: {
+    marginVertical: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  demoTitle: {
+    fontSize: 12,
+    color: '#777',
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  demoRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  demoChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#00AA13',
+    backgroundColor: '#F0FDF4',
+  },
+  demoChipActive: {
+    backgroundColor: '#00AA13',
+    borderColor: '#00AA13',
+  },
+  demoChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#00AA13',
+  },
+  demoChipTextActive: {
+    color: '#FFFFFF',
   },
   button: {
     backgroundColor: '#00AA13',

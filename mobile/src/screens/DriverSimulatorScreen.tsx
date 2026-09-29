@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { socket } from '../services/socket';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 
 export default function DriverSimulatorScreen({ route, navigation }: any) {
+  const { user, logout } = useAuth();
   const initialOrderId = route.params?.orderId || '';
   const [orderId, setOrderId] = useState(initialOrderId);
   const [latitude, setLatitude] = useState('-6.2088');
@@ -104,14 +106,41 @@ export default function DriverSimulatorScreen({ route, navigation }: any) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <FontAwesome5 name="arrow-left" size={18} color="#1C1C1C" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Driver Simulator</Text>
-        <View style={{ width: 24 }} />
+        {navigation.canGoBack() ? (
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <FontAwesome5 name="arrow-left" size={18} color="#1C1C1C" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.driverIconCircle}>
+            <FontAwesome5 name="motorcycle" size={16} color="#00AA13" />
+          </View>
+        )}
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.headerTitle}>
+            {user?.role === 'DRIVER' ? (user.name || 'Pak Joko (Driver)') : 'Driver Simulator'}
+          </Text>
+          {user?.role === 'DRIVER' && (
+            <View style={styles.statusRow}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.statusText}>Driver Online • Siap Antar</Text>
+            </View>
+          )}
+        </View>
+        {user ? (
+          <TouchableOpacity
+            onPress={logout}
+            style={styles.logoutBtn}
+            accessibilityLabel="Logout"
+          >
+            <FontAwesome5 name="sign-out-alt" size={14} color="#E53935" />
+            <Text style={styles.logoutText}>Keluar</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 24 }} />
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -245,10 +274,49 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 6,
   },
+  driverIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#1C1C1C',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  onlineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#00AA13',
+    marginRight: 5,
+  },
+  statusText: {
+    fontSize: 11,
+    color: '#00AA13',
+    fontWeight: '600',
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 5,
+  },
+  logoutText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E53935',
   },
   content: {
     padding: 16,

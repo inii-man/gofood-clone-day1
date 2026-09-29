@@ -91,12 +91,22 @@ export const login = async (req: Request, res: Response) => {
     console.log(`✅ [AUTH] Login berhasil: "${user.name}" (${user.email}) | Role: ${user.role} | Token issued`);
 
     res.json({
+      success: true,
       token,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
+      },
+      data: {
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       },
     });
   } catch (error: any) {
