@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JWT Interactive Playground - GoFood Clone</title>
+  <style>
+    :root {
+      --header-color: #fb7185;
+      --payload-color: #c084fc;
+      --signature-color: #38bdf8;
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --brand-green: #00aa13;
+      --brand-green-hover: #00880d;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .badge-gofood {
+      background-color: var(--brand-green);
+      color: white;
+      padding: 4px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: bold;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-top: 4px;
+    }
+
+    /* Tab Navigation */
+    .tabs-nav {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 12px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      background-color: #334155;
+      color: #fff;
+    }
+
+    .tab-btn.active {
+      background-color: var(--brand-green);
+      border-color: var(--brand-green);
+      color: #fff;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Cards & Grids */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Color Keys */
+    .legend {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* Encoded Token Display */
+    .token-display {
+      background-color: #090d16;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 16px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 14px;
+      word-break: break-all;
+      min-height: 140px;
+      line-height: 1.6;
+    }
+
+    .token-header { color: var(--header-color); }
+    .token-payload { color: var(--payload-color); }
+    .token-sig { color: var(--signature-color); }
+    .token-dot { color: #64748b; font-weight: bold; }
+
+    textarea.token-input {
+      width: 100%;
+      height: 80px;
+      margin-top: 14px;
+      background: #090d16;
+      color: #cbd5e1;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 13px;
+      resize: vertical;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    textarea.json-box {
+      width: 100%;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 13px;
+      color: #e2e8f0;
+      resize: vertical;
+      margin-bottom: 16px;
+    }
+
+    input.secret-input, input.text-input {
+      width: 100%;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: #e2e8f0;
+      margin-bottom: 14px;
+    }
+
+    /* Verification Badge */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .status-valid {
+      background-color: rgba(0, 170, 19, 0.2);
+      color: #4ade80;
+      border: 1px solid #00aa13;
+    }
+
+    .status-invalid {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid #ef4444;
+    }
+
+    /* Action Buttons */
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button.btn {
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background-color: var(--brand-green);
+      color: white;
+    }
+    .btn-primary:hover { background-color: var(--brand-green-hover); }
+
+    .btn-hacker { background-color: #ef4444; color: white; }
+    .btn-hacker:hover { background-color: #dc2626; }
+
+    .btn-expired { background-color: #eab308; color: #0f172a; }
+    .btn-expired:hover { background-color: #ca8a04; }
+
+    .btn-reset { background-color: #334155; color: white; }
+    .btn-reset:hover { background-color: #475569; }
+
+    /* Concept Cards */
+    .concept-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .concept-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .concept-card h3 {
+      font-size: 15px;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    /* -------------------------------------------------------------
+       SIMULASI LOGIN STYLES
+       ------------------------------------------------------------- */
+    .sim-login-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .sim-login-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .phone-mockup {
+      background: #090d16;
+      border: 2px solid #334155;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .phone-header {
+      text-align: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #1e293b;
+      margin-bottom: 16px;
+    }
+
+    .phone-title {
+      font-weight: bold;
+      font-size: 16px;
+      color: #fff;
+    }
+
+    .storage-box {
+      background-color: #090d16;
+      border: 1px dashed #334155;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 14px;
+      font-size: 12px;
+    }
+
+    .console-log-box {
+      background-color: #090d16;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 16px;
+      font-family: monospace;
+      font-size: 12px;
+      min-height: 280px;
+      max-height: 380px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    .log-entry { margin-bottom: 8px; }
+    .log-time { color: #64748b; margin-right: 6px; }
+    .log-client { color: #38bdf8; font-weight: bold; }
+    .log-server { color: #4ade80; font-weight: bold; }
+    .log-err { color: #f87171; font-weight: bold; }
+
+    .api-test-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .api-test-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      text-align: left;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .api-test-btn:hover {
+      background: #1e293b;
+      border-color: var(--brand-green);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="badge-gofood">GoFood Clone Interactive Tools</div>
+      <h1>🔑 JWT & Login Simulation Playground</h1>
+      <p class="subtitle">Eksperimen langsung proses Login, Pembuatan JWT, Penyimpanan di HP, & Akses Protected Endpoint</p>
+    </header>
+
+    <!-- Tab Navigation -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('tab-simulasi')">📱 Simulasi Login & Protected API</button>
+      <button class="tab-btn" onclick="switchTab('tab-inspector')">🔍 JWT Inspector & Tamper Detector</button>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- TAB 1: SIMULASI LOGIN & FLOW API -->
+    <!-- ============================================================= -->
+    <div id="tab-simulasi" class="tab-content active">
+      <div class="sim-login-grid">
+        <!-- Mockup HP GoFood (Client) -->
+        <div class="phone-mockup">
+          <div class="phone-header">
+            <span style="font-size: 20px;">🛵</span>
+            <div class="phone-title">GoFood Mobile Client</div>
+            <span style="font-size: 11px; color: var(--text-muted);">Simulasi Layar Login HP</span>
+          </div>
+
+          <!-- Form Login -->
+          <div id="loginFormSection">
+            <div class="section-label">Email Pelanggan</div>
+            <input type="email" id="simEmail" class="text-input" value="budi@mail.com" />
+
+            <div class="section-label">Password</div>
+            <input type="password" id="simPassword" class="text-input" value="password123" />
+
+            <button class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 4px;" onclick="simulateLogin()">
+              🔐 Masuk (POST /api/auth/login)
+            </button>
+
+            <button class="btn" style="width: 100%; background: #334155; color: #cbd5e1; margin-top: 8px;" onclick="simulateWrongPassword()">
+              ❌ Tes Password Salah
+            </button>
+          </div>
+
+          <!-- Status Sesi HP (Saat Sudah Login) -->
+          <div id="loggedInSection" style="display: none;">
+            <div style="background: rgba(0, 170, 19, 0.15); border: 1px solid #00aa13; border-radius: 8px; padding: 12px; text-align: center;">
+              <div style="font-size: 20px;">✅</div>
+              <div style="font-weight: bold; color: #4ade80;" id="userProfileName">Budi Santoso</div>
+              <div style="font-size: 12px; color: var(--text-muted);" id="userProfileRole">Role: CUSTOMER</div>
+            </div>
+
+            <!-- Simulasi AsyncStorage HP -->
+            <div class="storage-box">
+              <strong style="color: #38bdf8;">📦 AsyncStorage Perangkat:</strong>
+              <div style="margin-top: 4px; color: #94a3b8; font-size: 11px;">Key: <code>auth_token</code></div>
+              <div style="background: #000; padding: 6px; border-radius: 4px; color: #c084fc; font-family: monospace; word-break: break-all; margin-top: 4px; font-size: 10px;" id="storedTokenPreview">
+                (Kosong)
+              </div>
+            </div>
+
+            <button class="btn btn-hacker" style="width: 100%; margin-top: 14px;" onclick="simulateLogout()">
+              🚪 Logout (Hapus Token dari HP)
+            </button>
+          </div>
+        </div>
+
+        <!-- Sisi Kanan: Alur Server & Protected API Tester -->
+        <div>
+          <!-- Server Processing Console -->
+          <div class="card" style="margin-bottom: 16px;">
+            <div class="card-title">
+              <span>🖥️ Server Processing Log (Live Execution)</span>
+              <button class="btn btn-reset" style="padding: 4px 10px; font-size: 11px;" onclick="clearLogs()">Clear Log</button>
+            </div>
+            <div class="console-log-box" id="consoleLogs">
+              <div class="log-entry">
+                <span class="log-time">[Ready]</span> Server GoFood aktif di port 3000. Siap menerima request.
+              </div>
+            </div>
+          </div>
+
+          <!-- Uji Akses Endpoint Terproteksi -->
+          <div class="card">
+            <div class="card-title">
+              <span>🛡️ Uji Request ke Protected API (<code>GET /api/orders</code>)</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+              Endpoint <code>/api/orders</code> dilindungi oleh <code>authMiddleware.ts</code>. Uji bagaimana server merespons berbagai skenario:
+            </p>
+
+            <div class="api-test-group">
+              <div class="api-test-btn" onclick="testOrderApiWithValidToken()">
+                <div>
+                  <strong>🟢 Skenario 1: Request DENGAN Token Sah</strong>
+                  <div style="font-size: 11px; color: var(--text-muted);">Header: <code>Authorization: Bearer &lt;stored_token&gt;</code></div>
+                </div>
+                <span style="font-size: 11px; background: #00aa13; padding: 4px 8px; border-radius: 4px;">Expect: 200 OK</span>
+              </div>
+
+              <div class="api-test-btn" onclick="testOrderApiWithoutToken()">
+                <div>
+                  <strong>🔴 Skenario 2: Request TANPA Token (Bypass attempt)</strong>
+                  <div style="font-size: 11px; color: var(--text-muted);">Header: Kosong (Tidak menyertakan Authorization)</div>
+                </div>
+                <span style="font-size: 11px; background: #ef4444; padding: 4px 8px; border-radius: 4px;">Expect: 401 Unauthorized</span>
+              </div>
+
+              <div class="api-test-btn" onclick="testOrderApiWithTamperedToken()">
+                <div>
+                  <strong>🎭 Skenario 3: Request dengan Token Palsu / Hacker</strong>
+                  <div style="font-size: 11px; color: var(--text-muted);">Header: Token diubah (Role dinaikkan jadi ADMIN secara ilegal)</div>
+                </div>
+                <span style="font-size: 11px; background: #eab308; color: #000; padding: 4px 8px; border-radius: 4px;">Expect: 401 Invalid Token</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- TAB 2: JWT INSPECTOR (JWT.IO STYLE) -->
+    <!-- ============================================================= -->
+    <div id="tab-inspector" class="tab-content">
+      <div class="grid">
+        <!-- SISI KIRI: ENCODED TOKEN -->
+        <div class="card">
+          <div class="card-title">
+            <span>📦 Encoded Token (Format URL-Safe)</span>
+          </div>
+
+          <div class="legend">
+            <div class="legend-item"><div class="dot" style="background: var(--header-color)"></div> <span style="color: var(--header-color)">Header</span></div>
+            <div class="legend-item"><div class="dot" style="background: var(--payload-color)"></div> <span style="color: var(--payload-color)">Payload</span></div>
+            <div class="legend-item"><div class="dot" style="background: var(--signature-color)"></div> <span style="color: var(--signature-color)">Signature</span></div>
+          </div>
+
+          <div class="token-display" id="tokenDisplay">
+            <span class="token-header" id="dispHeader"></span><span class="token-dot">.</span><span class="token-payload" id="dispPayload"></span><span class="token-dot">.</span><span class="token-sig" id="dispSig"></span>
+          </div>
+
+          <div style="margin-top: 14px;">
+            <div class="section-label" style="color: var(--text-muted)">Paste Token Manual untuk Di-decode:</div>
+            <textarea class="token-input" id="rawTokenInput" placeholder="Paste token JWT di sini..."></textarea>
+          </div>
+
+          <!-- Tombol Eksperimen -->
+          <div style="margin-top: 16px;">
+            <div class="section-label" style="color: #fff">🧪 Coba Eksperimen Keamanan:</div>
+            <div class="btn-group">
+              <button class="btn btn-hacker" id="btnHack">🎭 Ubah Role jadi "ADMIN"</button>
+              <button class="btn btn-expired" id="btnExpire">🕒 Buat Expired</button>
+              <button class="btn btn-reset" id="btnReset">🔄 Reset Data Budi</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SISI KANAN: DECODED PAYLOAD & SIGNATURE VERIFICATION -->
+        <div class="card">
+          <div class="card-title">
+            <span>🔍 Decoded Payload & Signature</span>
+            <span id="statusBadge" class="status-badge status-valid">Signature Verified ✅</span>
+          </div>
+
+          <!-- Header -->
+          <div class="section-label" style="color: var(--header-color)">HEADER: ALGORITMA & TIPE TOKEN</div>
+          <textarea class="json-box" id="headerInput" rows="3"></textarea>
+
+          <!-- Payload -->
+          <div class="section-label" style="color: var(--payload-color)">PAYLOAD: DATA PENGGUNA (CLAIMS)</div>
+          <textarea class="json-box" id="payloadInput" rows="7"></textarea>
+
+          <!-- Secret Key -->
+          <div class="section-label" style="color: var(--signature-color)">VERIFY SIGNATURE (SECRET KEY SERVER)</div>
+          <input type="text" class="secret-input" id="secretInput" value="gofood-rahasia-super-aman" />
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: -10px;">
+            *Hanya backend server yang menyimpan secret key ini di <code>process.env.JWT_SECRET</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KONSEP EDUKASI -->
+    <div class="concept-grid">
+      <div class="concept-card">
+        <h3>1. Mengapa JWT Disebut Stateless?</h3>
+        Server tidak perlu menyimpan token di database atau memory RAM. Cukup verifikasi tanda tangan digitalnya. Ini membuat GoFood backend sangat cepat dan mudah di-scale horizontal.
+      </div>
+      <div class="concept-card">
+        <h3>2. Mengapa Payload Bukan Rahasia?</h3>
+        Payload hanya di-encode dengan Base64Url, <strong>bukan dienkripsi</strong>. Siapapun bisa membaca isinya. Karena itu, <em>JANGAN PERNAH</em> menyimpan password di dalam payload JWT!
+      </div>
+      <div class="concept-card">
+        <h3>3. Apa Fungsi Signature?</h3>
+        Signature menjamin integritas. Jika seorang hacker mengubah isi payload (misal: mengubah <code>CUSTOMER</code> menjadi <code>ADMIN</code>), signature tidak akan cocok dan request langsung ditolak dengan <code>401 Unauthorized</code>.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+      if (tabId === 'tab-simulasi') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('tab-simulasi').classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('tab-inspector').classList.add('active');
+      }
+    }
+
+    // Helper Base64Url
+    function base64UrlEncode(str) {
+      const base64 = btoa(unescape(encodeURIComponent(str)));
+      return base64.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    }
+
+    function base64UrlDecode(str) {
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (str.length % 4) { str += '='; }
+      return decodeURIComponent(escape(atob(str)));
+    }
+
+    // SHA-256 HMAC via Web Crypto API
+    async function createHmacSha256(message, secret) {
+      const enc = new TextEncoder();
+      const keyData = enc.encode(secret);
+      const key = await window.crypto.subtle.importKey(
+        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      const signature = await window.crypto.subtle.sign('HMAC', key, enc.encode(message));
+      const bytes = new Uint8Array(signature);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    }
+
+    // Default Mock Data
+    const MOCK_USER = {
+      id: "c87888d6-34c8-4b2c-b3c2-c6fb0ab9f446",
+      name: "Budi Santoso",
+      email: "budi@mail.com",
+      role: "CUSTOMER",
+      password: "password123"
+    };
+    const SECRET_KEY = "gofood-rahasia-super-aman";
+
+    // State Simulasi
+    let currentAuthToken = null;
+    let currentUserData = null;
+
+    function addLog(source, message, type = 'info') {
+      const consoleBox = document.getElementById('consoleLogs');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+
+      let sourceTag = `<span class="log-client">[CLIENT]</span>`;
+      if (source === 'SERVER') sourceTag = `<span class="log-server">[SERVER]</span>`;
+      if (type === 'err') sourceTag = `<span class="log-err">[ERROR]</span>`;
+
+      entry.innerHTML = `<span class="log-time">[${time}]</span> ${sourceTag} ${message}`;
+      consoleBox.appendChild(entry);
+      consoleBox.scrollTop = consoleBox.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('consoleLogs').innerHTML = '';
+      addLog('SERVER', 'Logs dibersihkan.');
+    }
+
+    // SIMULASI 1: LOGIN BERHASIL
+    async function simulateLogin() {
+      const email = document.getElementById('simEmail').value.trim();
+      const pass = document.getElementById('simPassword').value;
+
+      addLog('CLIENT', `Mengirim request: POST /api/auth/login { email: "${email}", password: "•••" }`);
+
+      setTimeout(async () => {
+        // Step 1: Validasi user di database
+        if (email !== MOCK_USER.email) {
+          addLog('SERVER', `User dengan email "${email}" tidak ditemukan di PostgreSQL.`, 'err');
+          addLog('SERVER', `HTTP 401 Unauthorized: { message: "Invalid credentials" }`, 'err');
+          return;
+        }
+
+        // Step 2: Validasi password
+        if (pass !== MOCK_USER.password) {
+          addLog('SERVER', `bcrypt.compare() menghasilkan FALSE. Password tidak cocok!`, 'err');
+          addLog('SERVER', `HTTP 401 Unauthorized: { message: "Invalid credentials" }`, 'err');
+          return;
+        }
+
+        addLog('SERVER', `User ditemukan & bcrypt.compare() cocok!`);
+
+        // Step 3: Generate Token JWT
+        const header = { alg: "HS256", typ: "JWT" };
+        const payload = {
+          userId: MOCK_USER.id,
+          name: MOCK_USER.name,
+          email: MOCK_USER.email,
+          role: MOCK_USER.role,
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 86400
+        };
+
+        const encH = base64UrlEncode(JSON.stringify(header));
+        const encP = base64UrlEncode(JSON.stringify(payload));
+        const sig = await createHmacSha256(`${encH}.${encP}`, SECRET_KEY);
+        const token = `${encH}.${encP}.${sig}`;
+
+        currentAuthToken = token;
+        currentUserData = payload;
+
+        addLog('SERVER', `JWT berhasil dibuat dengan jwt.sign(payload, SECRET, { expiresIn: '1d' })`);
+        addLog('SERVER', `HTTP 200 OK: Mengembalikan { token: "${token.slice(0, 20)}...", user: {...} }`);
+
+        // Client menyimpan token ke AsyncStorage
+        addLog('CLIENT', `Token diterima dan disimpan ke AsyncStorage ('auth_token')`);
+
+        // Update UI HP
+        document.getElementById('loginFormSection').style.display = 'none';
+        document.getElementById('loggedInSection').style.display = 'block';
+        document.getElementById('userProfileName').textContent = MOCK_USER.name;
+        document.getElementById('userProfileRole').textContent = `Role: ${MOCK_USER.role}`;
+        document.getElementById('storedTokenPreview').textContent = token;
+
+        // Sync ke Tab Inspector juga
+        headerInput.value = JSON.stringify(header, null, 2);
+        payloadInput.value = JSON.stringify(payload, null, 2);
+        encodeAndSign();
+      }, 500);
+    }
+
+    function simulateWrongPassword() {
+      document.getElementById('simPassword').value = 'passwordsalah123';
+      simulateLogin();
+    }
+
+    function simulateLogout() {
+      currentAuthToken = null;
+      currentUserData = null;
+      addLog('CLIENT', `Logout: Menghapus 'auth_token' dari AsyncStorage`);
+      addLog('CLIENT', `User kembali ke kondisi unauthenticated`);
+
+      document.getElementById('loginFormSection').style.display = 'block';
+      document.getElementById('loggedInSection').style.display = 'none';
+      document.getElementById('storedTokenPreview').textContent = '(Kosong)';
+    }
+
+    // SIMULASI 2: TEST PROTECTED API
+    async function testOrderApiWithValidToken() {
+      if (!currentAuthToken) {
+        addLog('CLIENT', `Gagal: Anda belum login! Silakan login terlebih dahulu di form HP.`, 'err');
+        return;
+      }
+
+      addLog('CLIENT', `Request: GET /api/orders (Header: Authorization: Bearer ${currentAuthToken.slice(0, 16)}...)`);
+
+      setTimeout(() => {
+        addLog('SERVER', `authMiddleware: Membaca header 'Bearer <token>'...`);
+        addLog('SERVER', `authMiddleware: jwt.verify(token, JWT_SECRET) -> SUKSES ✅ (UserId: ${currentUserData.userId})`);
+        addLog('SERVER', `orderController.getMyOrders: Mengambil pesanan user dari PostgreSQL...`);
+        addLog('SERVER', `HTTP 200 OK: { success: true, data: [ { id: "ORD-001", total: 70000, status: "DELIVERING" } ] }`);
+      }, 400);
+    }
+
+    function testOrderApiWithoutToken() {
+      addLog('CLIENT', `Request: GET /api/orders (Header: TANPA TOKEN)`);
+
+      setTimeout(() => {
+        addLog('SERVER', `authMiddleware: Tidak ada header Authorization Bearer!`, 'err');
+        addLog('SERVER', `HTTP 401 Unauthorized: { message: "Authentication required" }`, 'err');
+      }, 300);
+    }
+
+    async function testOrderApiWithTamperedToken() {
+      if (!currentAuthToken) {
+        // Buat dummy token
+        await simulateLogin();
+      }
+
+      const parts = currentAuthToken.split('.');
+      // Modifikasi payload: role diubah jadi ADMIN
+      const fakePayload = { ...currentUserData, role: 'ADMIN' };
+      const fakeEncP = base64UrlEncode(JSON.stringify(fakePayload));
+      // Rakit token palsu dengan signature lama
+      const tamperedToken = `${parts[0]}.${fakeEncP}.${parts[2]}`;
+
+      addLog('CLIENT', `Hacker mengirim token modifikasi (Role diubah jadi ADMIN secara ilegal): GET /api/orders`, 'err');
+
+      setTimeout(() => {
+        addLog('SERVER', `authMiddleware: Membaca token & memverifikasi signature...`);
+        addLog('SERVER', `authMiddleware: jwt.verify() GAGAL: Signature verification failed!`, 'err');
+        addLog('SERVER', `HTTP 401 Unauthorized: { message: "Invalid or expired token" }`, 'err');
+      }, 400);
+    }
+
+    // -------------------------------------------------------------
+    // TAB 2: INSPECTOR LOGIC
+    // -------------------------------------------------------------
+    const dispHeader = document.getElementById('dispHeader');
+    const dispPayload = document.getElementById('dispPayload');
+    const dispSig = document.getElementById('dispSig');
+    const headerInput = document.getElementById('headerInput');
+    const payloadInput = document.getElementById('payloadInput');
+    const secretInput = document.getElementById('secretInput');
+    const rawTokenInput = document.getElementById('rawTokenInput');
+    const statusBadge = document.getElementById('statusBadge');
+
+    async function encodeAndSign() {
+      try {
+        const headerStr = headerInput.value;
+        const payloadStr = payloadInput.value;
+        const secret = secretInput.value;
+
+        JSON.parse(headerStr);
+        JSON.parse(payloadStr);
+
+        const encH = base64UrlEncode(headerStr);
+        const encP = base64UrlEncode(payloadStr);
+        const sig = await createHmacSha256(`${encH}.${encP}`, secret);
+
+        dispHeader.textContent = encH;
+        dispPayload.textContent = encP;
+        dispSig.textContent = sig;
+
+        const fullToken = `${encH}.${encP}.${sig}`;
+        rawTokenInput.value = fullToken;
+
+        statusBadge.className = 'status-badge status-valid';
+        statusBadge.textContent = 'Signature Verified ✅';
+      } catch (err) {
+        statusBadge.className = 'status-badge status-invalid';
+        statusBadge.textContent = 'Invalid JSON ❌';
+      }
+    }
+
+    async function decodeManualToken() {
+      const token = rawTokenInput.value.trim();
+      const parts = token.split('.');
+
+      if (parts.length !== 3) {
+        statusBadge.className = 'status-badge status-invalid';
+        statusBadge.textContent = 'Invalid Token Format ❌';
+        return;
+      }
+
+      const [encH, encP, encS] = parts;
+      dispHeader.textContent = encH;
+      dispPayload.textContent = encP;
+      dispSig.textContent = encS;
+
+      try {
+        const hJson = base64UrlDecode(encH);
+        const pJson = base64UrlDecode(encP);
+        headerInput.value = JSON.stringify(JSON.parse(hJson), null, 2);
+        payloadInput.value = JSON.stringify(JSON.parse(pJson), null, 2);
+
+        // Verifikasi signature
+        const expectedSig = await createHmacSha256(`${encH}.${encP}`, secretInput.value);
+        if (expectedSig === encS) {
+          statusBadge.className = 'status-badge status-valid';
+          statusBadge.textContent = 'Signature Verified ✅';
+        } else {
+          statusBadge.className = 'status-badge status-invalid';
+          statusBadge.textContent = 'Invalid Signature (Tampered!) ❌';
+        }
+      } catch (e) {
+        statusBadge.className = 'status-badge status-invalid';
+        statusBadge.textContent = 'Error Decoding Token ❌';
+      }
+    }
+
+    // Event Listeners
+    headerInput.addEventListener('input', encodeAndSign);
+    payloadInput.addEventListener('input', encodeAndSign);
+    secretInput.addEventListener('input', encodeAndSign);
+    rawTokenInput.addEventListener('input', decodeManualToken);
+
+    // Eksperimen 1: Hacker memalsukan role
+    document.getElementById('btnHack').addEventListener('click', async () => {
+      try {
+        const currentPayload = JSON.parse(payloadInput.value);
+        currentPayload.role = "ADMIN";
+        payloadInput.value = JSON.stringify(currentPayload, null, 2);
+
+        const encH = base64UrlEncode(headerInput.value);
+        const encP = base64UrlEncode(payloadInput.value);
+        const oldSig = dispSig.textContent;
+
+        dispPayload.textContent = encP;
+        rawTokenInput.value = `${encH}.${encP}.${oldSig}`;
+
+        statusBadge.className = 'status-badge status-invalid';
+        statusBadge.textContent = 'PERETASAN DITOLAK: Signature Mismatch! ❌';
+      } catch (e) {}
+    });
+
+    // Eksperimen 2: Token kadaluarsa
+    document.getElementById('btnExpire').addEventListener('click', () => {
+      try {
+        const currentPayload = JSON.parse(payloadInput.value);
+        currentPayload.exp = Math.floor(Date.now() / 1000) - 3600;
+        payloadInput.value = JSON.stringify(currentPayload, null, 2);
+        encodeAndSign();
+        statusBadge.className = 'status-badge status-invalid';
+        statusBadge.textContent = 'Token Expired (Kadaluarsa) ❌';
+      } catch (e) {}
+    });
+
+    // Reset
+    function resetDefault() {
+      headerInput.value = JSON.stringify({ alg: "HS256", typ: "JWT" }, null, 2);
+      payloadInput.value = JSON.stringify({
+        userId: MOCK_USER.id,
+        name: MOCK_USER.name,
+        email: MOCK_USER.email,
+        role: MOCK_USER.role,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 86400
+      }, null, 2);
+      secretInput.value = SECRET_KEY;
+      encodeAndSign();
+    }
+    document.getElementById('btnReset').addEventListener('click', resetDefault);
+
+    // Init
+    resetDefault();
+  </script>
+</body>
+</html>
