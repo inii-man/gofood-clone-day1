@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import SearchBar from '../components/SearchBar';
 import CategoryItem from '../components/CategoryItem';
 import RestaurantCard from '../components/RestaurantCard';
 import { categories } from '../data/dummy';
 import { getRestaurants } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen({ navigation }: any) {
+  const { user, logout } = useAuth();
   // State untuk menyimpan daftar restoran dari API
   const [restaurants, setRestaurants] = useState<any[]>([]);
   // State untuk menandakan apakah data sedang di-load (proses fetching)
@@ -43,15 +45,37 @@ export default function HomeScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Lokasi Anda</Text>
+          <Text style={styles.greeting}>
+            {user ? `Halo, ${user.name}` : 'Lokasi Anda'}
+          </Text>
           <View style={styles.locationRow}>
             <Ionicons name="location-sharp" size={18} color="#00A651" />
             <Text style={styles.location}>Jakarta Selatan</Text>
             <Ionicons name="chevron-down" size={16} color="#666" />
           </View>
         </View>
-        <View style={styles.profileIcon}>
-          <Ionicons name="person-circle" size={40} color="#666" />
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigation.navigate('OrderHistory')}
+          >
+            <FontAwesome5 name="receipt" size={18} color="#1C1C1C" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigation.navigate('DriverSimulator')}
+          >
+            <FontAwesome5 name="motorcycle" size={18} color="#00AA13" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => logout()}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -139,8 +163,18 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     marginHorizontal: 4,
   },
-  profileIcon: {
-    padding: 4,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
   sectionTitle: {
     fontSize: 18,

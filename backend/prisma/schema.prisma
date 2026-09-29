@@ -21,21 +21,46 @@ model Restaurant {
 }
 
 model MenuItem {
-  id           String     @id @default(uuid())
+  id           String      @id @default(uuid())
   name         String
   description  String
   price        Int
   image        String
-  isPopular    Boolean    @default(false)
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  isPopular    Boolean     @default(false)
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id])
   restaurantId String
+  orderItems   OrderItem[]
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  phone     String?
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("CUSTOMER")
+  createdAt    DateTime @default(now())
+
+  orders       Order[]
+}
+
+model Order {
+  id         String      @id @default(uuid())
+  userId     String
+  status     String      @default("PENDING")
+  totalPrice Int
+  createdAt  DateTime    @default(now())
+
+  user       User        @relation(fields: [userId], references: [id])
+  items      OrderItem[]
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  menuItemId String
+  quantity   Int
+  price      Int
+
+  order      Order    @relation(fields: [orderId], references: [id])
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
 }

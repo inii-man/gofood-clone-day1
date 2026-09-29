@@ -65,7 +65,7 @@ export const dummyFoodItems: FoodItem[] = [
 ];
 
 export const categories = [
-  { id: '1', name: 'Nasi', icon: 'rice' },
+  { id: '1', name: 'Nasi', icon: 'utensils' },
   { id: '2', name: 'Burger', icon: 'hamburger' },
   { id: '3', name: 'Sushi', icon: 'fish' },
   { id: '4', name: 'Pizza', icon: 'pizza-slice' },

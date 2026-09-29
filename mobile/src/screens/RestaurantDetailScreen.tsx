@@ -16,6 +16,7 @@ import {
 } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { getMenu } from '../services/api';
+import { useCart } from '../context/CartContext';
 
 type DetailRouteProp = RouteProp<
   RootStackParamList,
@@ -29,6 +30,7 @@ export default function RestaurantDetailScreen() {
   const navigation = useNavigation();
   // Mengambil objek 'restaurant' dari parameter navigasi
   const { restaurant } = route.params;
+  const { addToCart, totalItems, totalPrice } = useCart();
 
   // State untuk menyimpan daftar menu dari API
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -125,8 +127,18 @@ export default function RestaurantDetailScreen() {
                 style={styles.menuImage}
               />
 
-              {/* Tombol Tambah ke Keranjang (fungsinya belum diimplementasi) */}
-              <TouchableOpacity style={styles.addButton}>
+              {/* Tombol Tambah ke Keranjang */}
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() =>
+                  addToCart({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    image: item.image,
+                  })
+                }
+              >
                 <Ionicons name="add" size={20} color="#00A651" />
               </TouchableOpacity>
             </View>
@@ -134,11 +146,23 @@ export default function RestaurantDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Tombol besar di bawah untuk melihat keranjang (statis) */}
-      <TouchableOpacity style={styles.cartButton}>
-        <Ionicons name="cart" size={20} color="#fff" />
-        <Text style={styles.cartText}>Lihat Keranjang</Text>
-      </TouchableOpacity>
+      {/* Tombol keranjang jika ada item */}
+      {totalItems > 0 && (
+        <TouchableOpacity
+          style={styles.cartButton}
+          onPress={() => navigation.navigate('Checkout' as never)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="cart" size={20} color="#fff" />
+            <Text style={styles.cartText}>
+              Lihat Keranjang ({totalItems})
+            </Text>
+          </View>
+          <Text style={styles.cartPriceText}>
+            Rp {totalPrice.toLocaleString()}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -266,9 +290,10 @@ const styles = StyleSheet.create({
     right: 20,
     backgroundColor: '#00A651',
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: 12,
     shadowColor: '#00A651',
     shadowOffset: { width: 0, height: 4 },
@@ -279,8 +304,13 @@ const styles = StyleSheet.create({
   cartText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 15,
     marginLeft: 8,
+  },
+  cartPriceText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
   },
   errorContainer: {
     alignItems: 'center',
