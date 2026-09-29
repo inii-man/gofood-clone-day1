@@ -19,18 +19,25 @@ export const authenticate = (
     : null;
 
   if (!token) {
+    console.warn('[authMiddleware] Request ditolak: Header Authorization Bearer tidak ditemukan!', req.headers);
     return res.status(401).json({
-      message: 'Authentication required',
+      message: 'Authentication required. Pastikan menyertakan header Authorization: Bearer <token>',
     });
   }
 
   try {
-    req.user = jwt.verify(
+    const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET || 'fallback_secret'
-    ) as AuthRequest['user'];
+    ) as any;
+
+    req.user = {
+      userId: decoded.userId || decoded.id,
+      role: decoded.role || 'CUSTOMER',
+    };
     next();
-  } catch {
+  } catch (err: any) {
+    console.warn('[authMiddleware] Verifikasi token gagal:', err.message);
     return res.status(401).json({
       message: 'Invalid or expired token',
     });

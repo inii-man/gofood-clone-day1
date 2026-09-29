@@ -19,9 +19,12 @@ api.interceptors.request.use(
       const token = await AsyncStorage.getItem('auth_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log(`[API ➡️] ${config.method?.toUpperCase()} ${config.url} | Token: Bearer ${token.slice(0, 10)}...`);
+      } else {
+        console.log(`[API ➡️] ${config.method?.toUpperCase()} ${config.url} | Token: ⚠️ NO_TOKEN_IN_ASYNC_STORAGE`);
       }
     } catch (err) {
-      console.error('Error attaching auth token', err);
+      console.error('[API] Error reading auth_token from AsyncStorage', err);
     }
     return config;
   },
@@ -29,12 +32,27 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`[API ⬅️] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url} (Success)`);
+    return response;
+  },
   (error) => {
-    console.error(
-      'API Error:',
-      error.response?.data || error.message
-    );
+    const status = error.response?.status;
+    const url = error.config?.url;
+    const method = error.config?.method?.toUpperCase();
+    const serverMsg = error.response?.data?.message;
+
+    console.warn(`❌ [API Error] ${method} ${url} -> Status: ${status || 'NETWORK_ERROR'}`);
+    if (serverMsg) {
+      console.warn(`   Server Message: "${serverMsg}"`);
+    } else {
+      console.warn(`   Error Details:`, error.message);
+    }
+
+    if (status === 401) {
+      console.warn(`   👉 HINT: Request ditolak 401 Unauthorized! Periksa apakah token di AsyncStorage sudah tersimpan atau token sudah expired.`);
+    }
+
     return Promise.reject(error);
   }
 );

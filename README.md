@@ -1,123 +1,169 @@
-# GoFood Clone — Day 1
+# 🍕 GoFood Clone — Fullstack Mobile (Day 1 & Day 2)
 
-Hands-on project berdasarkan materi Hari 1: Mobile Fullstack Development. Aplikasi ini adalah *clone* sederhana dari GoFood yang terdiri dari backend menggunakan Node.js (Express + Prisma) dan mobile app menggunakan React Native (Expo).
+Hands-on project pembelajaran Fullstack Mobile Development (**GoFood Clone**). Terdiri dari backend REST API & WebSocket menggunakan **Node.js, Express, Prisma ORM, PostgreSQL, dan Socket.io**, serta aplikasi mobile cross-platform menggunakan **React Native (Expo SDK 57), TypeScript, Context API, Redux Toolkit, dan OpenStreetMap**.
 
-## 📱 Fitur (Day 1 Scope)
-- **Mobile (React Native + Expo)**: 
-  - GoFood Home Screen (Daftar Restoran & Promosi)
-  - Restaurant Detail Screen (Menu Makanan)
-  - Native Stack Navigation untuk perpindahan halaman
-  - Context API untuk manajemen state Keranjang (Cart)
-- **Backend (Node.js + Express)**:
-  - Database PostgreSQL menggunakan Prisma ORM
-  - RESTful API dengan TypeScript
-  - Prisma Seed untuk dummy data awal
-- **Integrasi**: Mobile app dapat mengambil data dari Backend API.
+---
+
+## 📱 Cakupan Fitur Aplikasi
+
+### **Day 1: Store & Food Catalog**
+- 🏬 **Katalog Restoran & Menu**: Menampilkan banner promo, kategori makanan, rating, estimasi waktu, dan daftar menu makanan.
+- 🛒 **Cart Management**: Context API (`CartContext`) untuk menambah, menghapus, dan menghitung total belanja.
+- 🗄️ **Database & Seeder**: PostgreSQL + Prisma ORM dengan data awal restoran & makanan.
+
+### **Day 2: From Cart to Live Order**
+- 🔐 **Autentikasi & Otorisasi**: Registrasi, Login, Password Hashing (`bcryptjs`), Token JWT (`jsonwebtoken`), dan sesi login persisten via `AsyncStorage`.
+- ⚙️ **Advanced State Management**: Redux Toolkit (`orderSlice`) untuk mengelola lifecycle checkout pesanan (`idle` ➔ `loading` ➔ `success` / `failed`).
+- 📦 **Order Management**: Pembuatan pesanan (`POST /api/orders`) terproteksi JWT, kalkulasi total harga otomatis di backend, dan riwayat pesanan (`GET /api/orders`).
+- 🛵 **Real-time Driver Tracking**: Pelacakan posisi kurir secara instan menggunakan **Socket.io Rooms** (`order:{orderId}`).
+- 🗺️ **Peta Interaktif Live (OpenStreetMap + Leaflet)**: Visualisasi peta nyata tanpa perlu Google Maps API Key.
+- 🎮 **In-Screen Driver Simulator**: Simulasi pergerakan motor kurir nyata menyusuri 12 titik jalan raya Jakarta (*Sudirman ➔ Semanggi ➔ Senayan*).
+
+---
 
 ## 🗂️ Struktur Proyek
 
 ```text
 gofood-clone-day1/
-├── mobile/                   # Aplikasi React Native (Expo)
-│   ├── src/                  # Kode utama (components, screens, navigation, dll)
-│   ├── .env.example          # Template environment variable
-│   ├── App.tsx               # Entry point aplikasi
-│   └── package.json
-├── backend/                  # REST API server (Express.js)
-│   ├── prisma/               # Schema database & seeder
-│   ├── src/                  # Controller, Route, dan konfigurasi Express
+├── backend/                  # REST API & WebSocket Server (Express + Socket.io + Prisma)
+│   ├── prisma/               # Schema PostgreSQL & Seeder data
+│   ├── src/                  # Controllers, Routes, Middleware, & server.ts
 │   ├── .env.example
 │   └── package.json
+├── mobile/                   # Aplikasi Mobile React Native (Expo)
+│   ├── src/
+│   │   ├── components/       # SearchBar, CategoryItem, RestaurantCard, TrackingMap
+│   │   ├── context/          # AuthContext (AsyncStorage), CartContext
+│   │   ├── navigation/       # AppNavigator (Auth Guard & Native Stack)
+│   │   ├── screens/          # Login, Register, Home, Detail, Checkout, History, Tracking, Simulator
+│   │   ├── services/         # api.ts (Axios + Interceptor), orderApi.ts, socket.ts
+│   │   └── store/            # Redux Toolkit (orderSlice, store.ts)
+│   ├── .env.example
+│   ├── App.tsx               # Root Provider Wrapper
+│   └── package.json
+├── docs/                     # 📚 Dokumentasi lengkap arsitektur, kode, & alur aplikasi
+│   ├── 01_ARSITEKTUR_DAN_OVERVIEW.md
+│   ├── 02_ALUR_FLOW_APLIKASI.md
+│   ├── 03_BEDAH_KODE_BACKEND.md
+│   ├── 04_BEDAH_KODE_MOBILE.md
+│   └── 05_PANDUAN_SETUP_DAN_TESTING.md
+├── jwt-playground/           # 🔑 Playground visual & interaktif untuk belajar JWT & Login
+│   ├── index.html            # Web UI playground (jwt.io style + simulasi login)
+│   └── playground.js         # Script Node.js native crypto
 └── README.md
 ```
 
-## 🚀 1. Persiapan Backend (Node.js)
+---
 
-Masuk ke folder backend, atur *environment variable*, dan jalankan aplikasinya:
+## 🚀 1. Persiapan & Menjalankan Backend
 
-```bash
-cd backend
-cp .env.example .env
-npm install
-```
-
-**Inisialisasi Database:**
-Pastikan PostgreSQL Anda sudah berjalan dan URL koneksinya benar di file `.env`.
-```bash
-npx prisma generate
-npx prisma db push
-npm run seed
-```
-
-**Jalankan Server Backend:**
-```bash
-npm run dev
-```
-
-Server backend akan berjalan di `http://localhost:5000` (atau port lain sesuai konfigurasi Anda). 
-Anda bisa mengujinya:
-- `curl http://localhost:5000/health`
-- `curl http://localhost:5000/api/restaurants`
-
-## 📱 2. Persiapan Mobile (Expo)
-
-Agar aplikasi *mobile* bisa mengakses backend di komputer, Anda harus menggunakan alamat IP lokal (LAN IP) komputer Anda.
-
-1. Buka tab terminal baru dan cek IP lokal Anda (misalnya: jalankan perintah `ifconfig` di Mac/Linux atau `ipconfig` di Windows).
-2. Masuk ke folder `mobile` dan salin `.env`:
+1. **Masuk ke folder backend & pasang dependensi:**
    ```bash
-   cd mobile
-   cp .env.example .env
+   cd backend
    npm install
    ```
-3. Buka file `mobile/.env` lalu ubah URL dengan IP lokal Anda. (Sesuaikan port backend):
+
+2. **Atur Environment Variable (`.env`):**
    ```env
-   EXPO_PUBLIC_API_URL=http://<IP_KOMPUTER_ANDA>:5000/api
+   DATABASE_URL="postgresql://username:password@localhost:5432/gofood_db?schema=public"
+   JWT_SECRET="gofood-rahasia-super-aman"
+   PORT=3000
    ```
-   *(Contoh: `http://192.168.88.3:5000/api`)*
 
-**Jalankan Expo:**
-```bash
-npx expo start
-```
-Setelah terminal menampilkan QR code, Anda dapat membukanya menggunakan aplikasi **Expo Go** dari HP Android/iOS Anda yang berada di jaringan WiFi yang sama.
+3. **Inisialisasi Database:**
+   ```bash
+   npx prisma db push
+   npx prisma generate
+   npm run seed
+   ```
 
-## ⚠️ Catatan Penting
-- Jangan pernah melakukan *commit* pada file `.env` asli yang berisi password atau informasi sensitif lainnya ke Git.
-- Pastikan HP dan komputer Anda terhubung dalam **jaringan WiFi yang sama** agar aplikasi Expo Go bisa mengakses backend lokal Anda.
+4. **Jalankan Server:**
+   ```bash
+   npm run dev
+   ```
+   *Server berjalan di `http://0.0.0.0:3000` (terbuka untuk koneksi lokal/LAN).*
 
 ---
 
-## 🛠️ Troubleshooting & Tips Tambahan
+## 📱 2. Persiapan & Menjalankan Mobile App (Expo)
 
-Berikut adalah beberapa kendala yang sering terjadi dan cara mengatasinya:
+1. **Cek Alamat IP Lokal Komputer/Mac:**
+   ```bash
+   ipconfig getifaddr en0
+   ```
+   *(Misal IP yang tampil: `192.168.88.7`)*
 
-### 1. Masalah Versi Node.js & Expo SDK
-Expo versi terbaru (misal SDK 52/57) mensyaratkan versi Node.js yang cukup baru (minimal `v20.19.x` atau `v22.x`). Jika Anda mendapatkan *error* `EBADENGINE` atau `Unsupported engine`, perbarui Node.js Anda:
-```bash
-# Jika Anda menggunakan n (Node Version Management)
-sudo n lts
-```
-Setelah Node diperbarui, selalu pastikan *dependencies* Expo Anda sinkron dengan versinya:
-```bash
-cd mobile
-npm install expo@latest
-npx expo install --fix
-```
+2. **Masuk ke folder mobile & atur `.env`:**
+   ```bash
+   cd mobile
+   npm install
+   ```
+   Pastikan file `mobile/.env` mengarah ke IP komputer Anda:
+   ```env
+   EXPO_PUBLIC_API_URL=http://<IP_KOMPUTER_ANDA>:3000/api
+   ```
+   *Contoh:* `EXPO_PUBLIC_API_URL=http://192.168.88.7:3000/api`
 
-### 2. Expo Go Mendesak Anda untuk Login
-Dalam beberapa kasus, saat aplikasi dijalankan, Expo Go mungkin menolak untuk membuka aplikasi lokal Anda sebelum Anda *login* di CLI.
-- Hentikan server Expo (`Ctrl + C`).
-- Jalankan `npx expo login` di terminal.
-- Masukkan *Email/Username* dan *Password*.
-- **Catatan:** Jika Anda mendaftar Expo menggunakan tombol "Continue with Google" (Gmail), Anda tidak memiliki password bawaan. Silakan kunjungi [expo.dev](https://expo.dev) > Account Settings > Password, lalu buat password baru di sana sebelum *login* di CLI.
+3. **Jalankan Expo:**
+   ```bash
+   npx expo start -c
+   ```
+   - Tekan **`i`** untuk iOS Simulator atau **`a`** untuk Android Emulator.
+   - Atau scan QR code dari aplikasi **Expo Go** di smartphone fisik Anda (pastikan berada di satu jaringan Wi-Fi yang sama).
 
-### 3. Masalah Jaringan Lokal (Gagal Scan QR)
-Walaupun HP dan Laptop di WiFi yang sama, terkadang setelan *Firewall* OS atau *AP Isolation* pada Router memblokir koneksi, sehingga HP Anda *loading* terus saat men-*scan* QR code.
-**Solusinya adalah menggunakan Tunnel:**
-```bash
-cd mobile
-npm install -D @expo/ngrok
-npx expo start --tunnel
-```
-Cara ini merutekan koneksi secara aman melalui internet, dan QR Code dapat di-scan meskipun tidak berada dalam jaringan WiFi yang sama.
+---
+
+## 🛠️ Troubleshooting & Panduan Solusi Error
+
+### 🔴 1. Student Bisa Login, Tapi Saat Checkout Muncul Error `401 Unauthorized`
+Ini adalah kendala yang paling sering dialami peserta:
+
+- **Penyebab Utama**: Token JWT tidak terkirim di header HTTP saat memanggil `POST /api/orders`. Di slide materi Day 2 belum menyertakan kode Axios Interceptor.
+- **Solusi**: Pastikan di `mobile/src/services/api.ts` sudah dipasang **Request Interceptor**:
+  ```typescript
+  import AsyncStorage from '@react-native-async-storage/async-storage';
+
+  api.interceptors.request.use(async (config) => {
+    const token = await AsyncStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`; // Wajib format: Bearer <spasi> token
+    }
+    return config;
+  });
+  ```
+- **Penyebab Kedua (Beda nama field payload)**:
+  - Di `authController.ts` token di-generate dengan: `{ userId: user.id }`.
+  - Di `orderController.ts` student membaca: `req.user.id` (bukan `req.user.userId`), sehingga bernilai `undefined`.
+  - **Solusi**: Gunakan fallback `const userId = req.user?.userId || req.user?.id;`.
+
+---
+
+### 🔴 2. Error `API TIMEOUT 10000MS` / Gagal Terhubung ke Server
+- **Penyebab**: Alamat IP laptop/komputer Anda berubah (misalnya setelah berganti koneksi Wi-Fi).
+- **Solusi**:
+  1. Cek kembali IP aktif Anda: `ipconfig getifaddr en0`.
+  2. Buka `mobile/.env` dan perbarui `EXPO_PUBLIC_API_URL` dengan IP baru.
+  3. Restart Expo dengan flag cache bersih: `npx expo start -c`.
+
+---
+
+### 🔴 3. Error `listen EADDRINUSE: address already in use 0.0.0.0:3000`
+- **Penyebab**: Proses node backend sebelumnya masih berjalan di background dan belum tertutup sempurna.
+- **Solusi**:
+  ```bash
+  # Cari dan matikan proses yang menggunakan port 3000:
+  lsof -ti :3000 | xargs kill -9
+  ```
+  Lalu jalankan kembali `npm run dev`.
+
+---
+
+## 📚 Folder Dokumentasi & Playground Khusus
+
+1. **Dokumentasi Lengkap Proyek**:
+   Pelajari detail arsitektur, flow bisnis, dan bedah kode line-by-line di folder [**`docs/`**](./docs/README.md).
+2. **Interactive JWT Playground**:
+   Buka playground visual untuk memahami anatomi token, tampering/hacking detector, dan simulasi login di folder [**`jwt-playground/`**](./jwt-playground/README.md).
+   ```bash
+   open jwt-playground/index.html
+   ```

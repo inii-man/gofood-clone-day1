@@ -15,6 +15,28 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(cors());
 app.use(express.json());
 
+// REQUEST LOGGER WITH AUTH PREVIEW & DURATION
+app.use((req, res, next) => {
+  const start = Date.now();
+  const { method, originalUrl } = req;
+  const authHeader = req.headers.authorization;
+  const tokenPreview = authHeader
+    ? `Bearer ${authHeader.replace('Bearer ', '').slice(0, 10)}...`
+    : '❌ NO_TOKEN';
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const status = res.statusCode;
+    const statusIcon = status >= 500 ? '💥' : status >= 400 ? '⚠️' : '✅';
+
+    console.log(
+      `${statusIcon} [HTTP] ${method.padEnd(6)} ${originalUrl.padEnd(20)} -> ${status} (${duration}ms) | Auth: ${tokenPreview}`
+    );
+  });
+
+  next();
+});
+
 // REGISTER ROUTES
 app.use('/api/auth', authRoutes);
 app.use('/api/restaurants', restaurantRoutes);

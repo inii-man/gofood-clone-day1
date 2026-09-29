@@ -81,9 +81,13 @@ export default function CheckoutScreen({ navigation }: any) {
     } catch (error: any) {
       dispatch(setStatus('failed'));
       console.error('Checkout error:', error);
+      const status = error.response?.status;
+      const serverMsg = error.response?.data?.message;
       const msg =
-        error.response?.data?.message || 'Gagal memproses checkout. Silakan coba lagi.';
-      Alert.alert('Gagal', msg);
+        status === 401
+          ? `Gagal 401 Unauthorized: ${serverMsg || 'Token autentikasi tidak ditemukan atau tidak valid.'}`
+          : serverMsg || error.message || 'Gagal memproses checkout. Silakan coba lagi.';
+      Alert.alert('Checkout Gagal', msg);
     }
   };
 

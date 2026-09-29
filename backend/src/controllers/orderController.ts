@@ -5,15 +5,19 @@ import { AuthRequest } from '../middleware/authMiddleware';
 export const createOrder = async (req: AuthRequest, res: Response) => {
   try {
     const { items } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || (req.user as any)?.id;
 
     if (!userId) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      console.warn('[orderController] userId kosong di req.user:', req.user);
+      return res.status(401).json({ message: 'Unauthorized: User ID not found in token' });
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
+      console.warn('⚠️ [ORDER] Create order ditolak: Payload items kosong atau bukan array!', req.body);
       return res.status(400).json({ message: 'Order items are required' });
     }
+
+    console.log(`📦 [ORDER] Memproses pembuatan order untuk userId: ${userId} (${items.length} menu items)`);
 
     const totalPrice = items.reduce(
       (total: number, item: any) => total + item.price * (item.quantity || 1),
@@ -41,22 +45,25 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       },
     });
 
+    console.log(`✅ [ORDER] Order #${order.id} BERHASIL dibuat! Total: Rp ${totalPrice.toLocaleString()}`);
+
     res.status(201).json({
       success: true,
       data: order,
     });
   } catch (error: any) {
-    console.error('Create order error:', error);
+    console.error('💥 [ORDER] Create order error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
 export const getMyOrders = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || (req.user as any)?.id;
 
     if (!userId) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      console.warn('[orderController.getMyOrders] userId kosong di req.user:', req.user);
+      return res.status(401).json({ message: 'Unauthorized: User ID not found in token' });
     }
 
     const orders = await prisma.order.findMany({
