@@ -1,8 +1,28 @@
 import prisma from './client';
+import bcrypt from 'bcryptjs';
 
 async function main() {
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
   await prisma.menuItem.deleteMany();
   await prisma.restaurant.deleteMany();
+
+  // Seed default User Budi (password: password123)
+  const passwordHash = await bcrypt.hash('password123', 10);
+  const budi = await prisma.user.upsert({
+    where: { email: 'budi@mail.com' },
+    update: {
+      name: 'Budi Santoso',
+      passwordHash,
+      role: 'CUSTOMER',
+    },
+    create: {
+      name: 'Budi Santoso',
+      email: 'budi@mail.com',
+      passwordHash,
+      role: 'CUSTOMER',
+    },
+  });
 
   const nasgor =
     await prisma.restaurant.create({
@@ -68,6 +88,7 @@ async function main() {
     });
 
   console.log('Seed completed:', {
+    user: { email: budi.email, name: budi.name, defaultPassword: 'password123' },
     nasgor,
     burger,
   });
