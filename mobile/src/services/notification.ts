@@ -1,5 +1,4 @@
 import { Platform, LogBox } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 
 LogBox.ignoreLogs([
@@ -9,111 +8,120 @@ LogBox.ignoreLogs([
   'No "projectId" found',
 ]);
 
+const isExpoGo =
+  Constants.appOwnership === 'expo' ||
+  (Constants as any).executionEnvironment === 'storeClient';
+const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
 
-// Set notification handler so notifications display banner and sound while app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Lazy load expo-notifications hanya jika BUKAN Android Expo Go
+// Hal ini mencegah fatal Error / warning SDK 53 yang dilempar expo-notifications di Expo Go Android.
+let Notifications: any = null;
+if (!isAndroidExpoGo) {
+  try {
+    Notifications = require('expo-notifications');
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+  } catch (e: any) {
+    console.log('[PUSH] expo-notifications loader non-critical:', e?.message);
+  }
+}
+
+// Event system untuk In-App Notification Banner yang bekerja 100% mulus di semua perangkat
+type NotificationListener = (payload: { title: string; body: string; data?: Record<string, any> }) => void;
+const listeners = new Set<NotificationListener>();
+
+export function onLocalNotification(callback: NotificationListener) {
+  listeners.add(callback);
+  return () => {
+    listeners.delete(callback);
+  };
+}
 
 export async function registerForPushNotifications(): Promise<string | null> {
   try {
-    // 1. Deteksi Expo Go di Android (SDK 53+)
-    // Expo secara resmi mencabut remote push notifications di Expo Go Android sejak SDK 53
-    // dan mewajibkan Development Build untuk remote push FCM.
-    const isExpoGo =
-      Constants.appOwnership === 'expo' ||
-      (Constants as any).executionEnvironment === 'storeClient';
-    const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
-
+    // 1. Jika di Android Expo Go, langsung kembalikan token simulasi tanpa menyentuh modul native FCM
     if (isAndroidExpoGo) {
       console.log(
-        '📱 [PUSH NOTIFICATION] Berjalan di Expo Go Android (SDK 53+). Menggunakan token simulasi & Local Notification.'
+        '📱 [PUSH NOTIFICATION] Berjalan di Expo Go Android (SDK 53+). Menggunakan token simulasi & In-App Notification.'
       );
-
-      // Setup permission & Android channel secara asynchronous tanpa mem-block rendering UI
-      (async () => {
-        try {
-          await Notifications.requestPermissionsAsync();
-          await Notifications.setNotificationChannelAsync('default', {
-            name: 'default',
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 250, 250, 250],
-            lightColor: '#00AA13',
-            sound: 'default',
-          });
-        } catch (err: any) {
-          console.log('[PUSH NOTIFICATION] Channel init non-critical:', err?.message);
-        }
-      })();
-
       const simulatedToken = `SimulatedDevice-android-${Math.random().toString(36).substring(2, 9)}`;
       return simulatedToken;
     }
 
-    // 2. Request notification permissions (untuk iOS atau Development Build)
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    // 2. Request permissions jika di lingkungan yang didukung (iOS atau Development Build)
+    if (Notifications) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
 
-    if (finalStatus !== 'granted') {
-      console.warn('⚠️ [PUSH NOTIFICATION] Izin notifikasi tidak diberikan oleh pengguna.');
-    }
+      if (finalStatus !== 'granted') {
+        console.warn('⚠️ [PUSH NOTIFICATION] Izin notifikasi tidak diberikan oleh pengguna.');
+      }
 
-    // 3. Configure Android channel if on Android (Development Build)
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#00AA13',
-        sound: 'default',
-      });
-    }
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#00AA13',
+          sound: 'default',
+        });
+      }
 
-    // 4. Try to get Expo remote push token
-    let token: string | null = null;
-    try {
       const tokenResponse = await Notifications.getExpoPushTokenAsync();
-      token = tokenResponse.data;
+      const token = tokenResponse.data;
       console.log('📱 [PUSH NOTIFICATION] Expo Push Token didapat:', token);
-    } catch (pushErr: any) {
-      console.log('ℹ️ [PUSH NOTIFICATION] Remote push token belum aktif di environment ini:', pushErr.message);
-      token = `SimulatedDevice-${Platform.OS}-${Math.random().toString(36).substring(2, 9)}`;
-      console.log('📱 [PUSH NOTIFICATION] Menggunakan device token simulasi:', token);
+      return token;
     }
 
-    return token;
+    return `SimulatedDevice-${Platform.OS}-${Math.random().toString(36).substring(2, 9)}`;
   } catch (error: any) {
-    console.warn('⚠️ [PUSH NOTIFICATION] Error in registerForPushNotifications:', error.message || error);
+    console.warn('⚠️ [PUSH NOTIFICATION] Fallback to simulated token:', error.message || error);
     return `SimulatedDevice-${Platform.OS}-fallback`;
   }
 }
 
 /**
- * Memunculkan banner notifikasi sistem lokal di perangkat (bekerja 100% di HP fisik maupun simulator!)
+ * Memunculkan notifikasi di perangkat:
+ * 1. Menampilkan In-App Floating Notification Banner di layar (seperti Gojek sungguhan).
+ * 2. Memanggil system notification native jika didukung oleh platform.
  */
 export async function showLocalNotification(title: string, body: string, data?: Record<string, any>) {
-  try {
-    console.log(`🔔 [LOCAL NOTIF] Memunculkan notifikasi sistem: "${title}" - "${body}"`);
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title,
-        body,
-        sound: 'default',
-        data: data || {},
-      },
-      trigger: null, // langsung muncul sekarang (0 ms)
-    });
-  } catch (error: any) {
-    console.error('💥 [LOCAL NOTIF] Gagal memunculkan notifikasi:', error);
+  console.log(`🔔 [NOTIFICATION] "${title}" - "${body}"`);
+
+  // 1. Selalu tampilkan floating banner di dalam aplikasi
+  listeners.forEach((listener) => {
+    try {
+      listener({ title, body, data });
+    } catch (err) {
+      console.error('Error in notification listener:', err);
+    }
+  });
+
+  // 2. Jadwalkan juga ke system tray jika library Notifications tersedia
+  if (Notifications?.scheduleNotificationAsync) {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          sound: 'default',
+          data: data || {},
+        },
+        trigger: null,
+      });
+    } catch (error: any) {
+      console.log('OS scheduleNotificationAsync non-critical:', error?.message);
+    }
   }
 }

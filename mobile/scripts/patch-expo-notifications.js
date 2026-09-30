@@ -8,11 +8,7 @@ const targetFiles = [
 
 targetFiles.forEach((file) => {
   if (fs.existsSync(file)) {
-    let content = fs.readFileSync(file, 'utf8');
-    if (content.includes("throw new Error(message);")) {
-      content = content.replace(/if\s*\(Platform\.OS\s*===\s*['"]android['"]\)\s*\{\s*throw new Error\(message\);\s*\}\s*else\s*if\s*\(__DEV__\)/g, 'if (__DEV__)');
-      fs.writeFileSync(file, content, 'utf8');
-      console.log(`✅ Patched: ${file}`);
-    }
+    fs.writeFileSync(file, 'export const warnOfExpoGoPushUsage = () => {};\n', 'utf8');
+    console.log(`✅ Patched no-op: ${file}`);
   }
 });

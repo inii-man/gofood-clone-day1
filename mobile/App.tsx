@@ -6,6 +6,7 @@ import { store } from './src/store/store';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import InAppNotificationBanner from './src/components/InAppNotificationBanner';
 import { registerForPushNotifications } from './src/services/notification';
 import { registerDevice } from './src/services/deviceApi';
 
@@ -59,6 +60,7 @@ export default function App() {
           <NotificationSync />
           <StatusBar style="dark" />
           <AppNavigator />
+          <InAppNotificationBanner />
         </CartProvider>
       </AuthProvider>
     </ReduxProvider>
