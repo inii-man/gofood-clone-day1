@@ -77,25 +77,51 @@ const io = new Server(httpServer, {
   },
 });
 
+app.get('/api/socket-rooms', (_req, res) => {
+  const roomsMap = io.sockets.adapter.rooms;
+  const sidsMap = io.sockets.adapter.sids;
+
+  // Filter room buatan (misal order:123), singkirkan default room bawaan socket.id
+  const customRooms: Record<string, { memberCount: number; socketIds: string[] }> = {};
+  roomsMap.forEach((membersSet, roomName) => {
+    if (!sidsMap.has(roomName)) {
+      customRooms[roomName] = {
+        memberCount: membersSet.size,
+        socketIds: Array.from(membersSet),
+      };
+    }
+  });
+
+  res.json({
+    totalConnectedClients: sidsMap.size,
+    totalActiveRooms: Object.keys(customRooms).length,
+    rooms: customRooms,
+  });
+});
+
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  console.log(`🔌 [SOCKET] Client connected: ${socket.id}`);
 
   socket.on('join-order', (orderId: string) => {
-    socket.join(`order:${orderId}`);
-    console.log(`${socket.id} joined order:${orderId}`);
+    const roomName = `order:${orderId}`;
+    socket.join(roomName);
+    const memberCount = io.sockets.adapter.rooms.get(roomName)?.size || 1;
+    console.log(`🏠 [SOCKET] ${socket.id} BERHASIL join "${roomName}" (Total client di room ini: ${memberCount})`);
   });
 
   socket.on('driver-location', (data: { orderId: string; latitude: number; longitude: number }) => {
     const { orderId, latitude, longitude } = data;
-    console.log(`Driver location update for order:${orderId}`, { latitude, longitude });
-    io.to(`order:${orderId}`).emit('location-updated', {
+    const roomName = `order:${orderId}`;
+    const memberCount = io.sockets.adapter.rooms.get(roomName)?.size || 0;
+    console.log(`📍 [SOCKET] Driver emit lokasi ke "${roomName}" (${memberCount} penerima):`, { latitude, longitude });
+    io.to(roomName).emit('location-updated', {
       latitude,
       longitude,
     });
   });
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    console.log(`🔌 [SOCKET] Client disconnected: ${socket.id}`);
   });
 });
 
