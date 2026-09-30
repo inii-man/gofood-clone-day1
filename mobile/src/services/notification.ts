@@ -1,10 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // Set notification handler so notifications display banner and sound while app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -38,15 +38,30 @@ export async function registerForPushNotifications(): Promise<string | null> {
       });
     }
 
-    // 3. Try to get Expo remote push token
+    // 3. Deteksi Expo Go di Android (SDK 53+)
+    // Expo secara resmi mencabut remote push notifications di Expo Go Android sejak SDK 53
+    // dan mewajibkan Development Build untuk remote push FCM.
+    // Dengan bypass ini, warning merah/kuning SDK 53 tidak akan muncul lagi di HP Android.
+    const isExpoGo =
+      Constants.appOwnership === 'expo' ||
+      (Constants as any).executionEnvironment === 'storeClient';
+    const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
+
+    if (isAndroidExpoGo) {
+      console.log(
+        '📱 [PUSH NOTIFICATION] Berjalan di Expo Go Android (SDK 53+). Menggunakan token simulasi & Local Notification.'
+      );
+      const simulatedToken = `SimulatedDevice-android-${Math.random().toString(36).substring(2, 9)}`;
+      return simulatedToken;
+    }
+
+    // 4. Try to get Expo remote push token (untuk iOS atau Development Build)
     let token: string | null = null;
     try {
       const tokenResponse = await Notifications.getExpoPushTokenAsync();
       token = tokenResponse.data;
       console.log('📱 [PUSH NOTIFICATION] Expo Push Token didapat:', token);
     } catch (pushErr: any) {
-      // Pada simulator atau tanpa EAS projectId, getExpoPushTokenAsync akan throw.
-      // Kita fallback ke simulated token agar device tetap tercatat di PostgreSQL backend.
       console.log('ℹ️ [PUSH NOTIFICATION] Remote push token belum aktif di environment ini:', pushErr.message);
       token = `SimulatedDevice-${Platform.OS}-${Math.random().toString(36).substring(2, 9)}`;
       console.log('📱 [PUSH NOTIFICATION] Menggunakan device token simulasi:', token);
