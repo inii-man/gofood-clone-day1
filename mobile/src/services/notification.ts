@@ -22,7 +22,40 @@ Notifications.setNotificationHandler({
 
 export async function registerForPushNotifications(): Promise<string | null> {
   try {
-    // 1. Request notification permissions
+    // 1. Deteksi Expo Go di Android (SDK 53+)
+    // Expo secara resmi mencabut remote push notifications di Expo Go Android sejak SDK 53
+    // dan mewajibkan Development Build untuk remote push FCM.
+    const isExpoGo =
+      Constants.appOwnership === 'expo' ||
+      (Constants as any).executionEnvironment === 'storeClient';
+    const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
+
+    if (isAndroidExpoGo) {
+      console.log(
+        '📱 [PUSH NOTIFICATION] Berjalan di Expo Go Android (SDK 53+). Menggunakan token simulasi & Local Notification.'
+      );
+
+      // Setup permission & Android channel secara asynchronous tanpa mem-block rendering UI
+      (async () => {
+        try {
+          await Notifications.requestPermissionsAsync();
+          await Notifications.setNotificationChannelAsync('default', {
+            name: 'default',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#00AA13',
+            sound: 'default',
+          });
+        } catch (err: any) {
+          console.log('[PUSH NOTIFICATION] Channel init non-critical:', err?.message);
+        }
+      })();
+
+      const simulatedToken = `SimulatedDevice-android-${Math.random().toString(36).substring(2, 9)}`;
+      return simulatedToken;
+    }
+
+    // 2. Request notification permissions (untuk iOS atau Development Build)
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -35,7 +68,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
       console.warn('⚠️ [PUSH NOTIFICATION] Izin notifikasi tidak diberikan oleh pengguna.');
     }
 
-    // 2. Configure Android channel if on Android
+    // 3. Configure Android channel if on Android (Development Build)
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
@@ -46,24 +79,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
       });
     }
 
-    // 3. Deteksi Expo Go di Android (SDK 53+)
-    // Expo secara resmi mencabut remote push notifications di Expo Go Android sejak SDK 53
-    // dan mewajibkan Development Build untuk remote push FCM.
-    // Dengan bypass ini, warning merah/kuning SDK 53 tidak akan muncul lagi di HP Android.
-    const isExpoGo =
-      Constants.appOwnership === 'expo' ||
-      (Constants as any).executionEnvironment === 'storeClient';
-    const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
-
-    if (isAndroidExpoGo) {
-      console.log(
-        '📱 [PUSH NOTIFICATION] Berjalan di Expo Go Android (SDK 53+). Menggunakan token simulasi & Local Notification.'
-      );
-      const simulatedToken = `SimulatedDevice-android-${Math.random().toString(36).substring(2, 9)}`;
-      return simulatedToken;
-    }
-
-    // 4. Try to get Expo remote push token (untuk iOS atau Development Build)
+    // 4. Try to get Expo remote push token
     let token: string | null = null;
     try {
       const tokenResponse = await Notifications.getExpoPushTokenAsync();

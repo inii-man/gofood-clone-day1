@@ -33,6 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore session from AsyncStorage (Slide 20)
   useEffect(() => {
+    let isMounted = true;
+
+    // Safety timeout: memastikan splash / spinner tidak stuck selamanya di HP Android
+    const fallbackTimer = setTimeout(() => {
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    }, 400);
+
     const restoreSession = async () => {
       try {
         const storedToken = await AsyncStorage.getItem('auth_token');
@@ -51,11 +60,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.error('Failed to restore auth session', e);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          clearTimeout(fallbackTimer);
+          setIsLoading(false);
+        }
       }
     };
 
     restoreSession();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(fallbackTimer);
+    };
   }, []);
 
   // Save JWT Token & Login (Slide 19)

@@ -23,17 +23,21 @@ function NotificationSync() {
   const [pushToken, setPushToken] = useState<string | null>(null);
 
   useEffect(() => {
-    registerForPushNotifications().then((token) => {
-      console.log('Push Token:', token);
-      if (token) {
-        setPushToken(token);
-        // Slide 18: Setelah token didapat dan tidak null, panggil registerDevice(token)
-        registerDevice(token).catch((err) => {
-          // Jika belum login, akan diregister kembali begitu authToken tersedia
-          console.log('[PUSH] Register token awal (sebelum auth atau guest):', err?.response?.status || err.message);
-        });
-      }
-    });
+    registerForPushNotifications()
+      .then((token) => {
+        console.log('Push Token:', token);
+        if (token) {
+          setPushToken(token);
+          // Slide 18: Setelah token didapat dan tidak null, panggil registerDevice(token)
+          registerDevice(token).catch((err) => {
+            // Jika belum login, akan diregister kembali begitu authToken tersedia
+            console.log('[PUSH] Register token awal (sebelum auth atau guest):', err?.response?.status || err.message);
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('⚠️ [PUSH] Register push notifications error:', err);
+      });
   }, []);
 
   useEffect(() => {
