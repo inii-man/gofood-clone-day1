@@ -5,6 +5,8 @@ const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   'http://192.168.88.7:3000/api';
 
+
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,

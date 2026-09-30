@@ -1,6 +1,6 @@
 # 🚀 05. Panduan Menjalankan & Pengujian (Testing Guide)
 
-Dokumen ini memandu Anda dalam menyiapkan environment, menjalankan server backend & aplikasi mobile, serta melakukan pengujian end-to-end secara komprehensif.
+Dokumen ini memandu Anda dalam menyiapkan environment, menjalankan server backend & aplikasi mobile, mengeksekusi unit test otomatis, serta melakukan pengujian end-to-end secara komprehensif hingga fitur Day 3 (Push Notification & Payment Simulator).
 
 ---
 
@@ -14,7 +14,7 @@ cd backend
 ### Langkah 2: Konfigurasi Environment (`.env`)
 Pastikan file `.env` di direktori `backend/` memiliki nilai yang sesuai:
 ```env
-DATABASE_URL="postgresql://sulaimansaleh:08812216654MANZ@localhost:5432/gofood_db?schema=public"
+DATABASE_URL="postgresql://username:password@localhost:5432/gofood_db?schema=public"
 JWT_SECRET="gofood-secret-key-super-aman"
 PORT=3000
 ```
@@ -30,7 +30,23 @@ npx prisma generate
 npm run seed
 ```
 
-### Langkah 5: Jalankan Server Development
+### Langkah 5: Eksekusi Automated Unit Testing (Jest)
+Jalankan unit test untuk memastikan kalkulasi harga pesanan berjalan benar:
+```bash
+npm test
+```
+*Hasil yang diharapkan:*
+```text
+PASS src/utils/calculateTotal.test.ts
+  calculateTotal
+    ✓ calculates order total
+    ✓ returns zero for empty cart
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+```
+
+### Langkah 6: Jalankan Server Development
 ```bash
 npm run dev
 ```
@@ -46,95 +62,99 @@ cd mobile
 ```
 
 ### Langkah 2: Konfigurasi IP Backend (`.env`)
-Buka file `mobile/.env` dan pastikan alamat IP mengarah ke IP lokal komputer Anda pada jaringan Wi-Fi:
+Cek IP aktif komputer Anda (`ipconfig getifaddr en0`) lalu perbarui `mobile/.env`:
 ```env
-EXPO_PUBLIC_API_URL=http://192.168.88.3:3000/api
+EXPO_PUBLIC_API_URL=http://<IP_KOMPUTER_ANDA>:3000/api
 ```
-*(Ganti `192.168.88.3` dengan IP lokal laptop/komputer Anda jika berpindah jaringan Wi-Fi)*.
 
 ### Langkah 3: Jalankan Expo Development Server
 ```bash
-npx expo start
+npx expo start -c
 ```
 - Tekan **`i`** untuk membuka di iOS Simulator.
 - Tekan **`a`** untuk membuka di Android Emulator.
-- Atau scan QR code menggunakan aplikasi **Expo Go** pada smartphone fisik Anda.
+- Atau scan QR code dari smartphone fisik menggunakan aplikasi **Expo Go** (disarankan untuk menguji notifikasi push nyata).
 
 ---
 
-## 3. Pengujian API Melalui Terminal (cURL)
+## 🧪 3. Pengujian API via cURL
 
-Anda dapat menguji seluruh endpoint secara independen menggunakan perintah cURL berikut:
-
-### A. Uji Registrasi Akun Baru
-```bash
-curl -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Budi Santoso",
-    "email": "budi@mail.com",
-    "password": "password123"
-  }'
-```
-
-### B. Uji Login Akun & Mendapatkan JWT
+### A. Login untuk Mendapatkan Token JWT
 ```bash
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "budi@mail.com",
-    "password": "password123"
-  }'
+  -d '{ "email": "budi@mail.com", "password": "password123" }'
 ```
-*Salin nilai `"token"` dari response untuk pengujian endpoint berikutnya.*
-
-### C. Uji Buat Pesanan (Protected dengan JWT)
-```bash
-# Simpan token ke variable shell
-TOKEN="<PASTE_TOKEN_JWT_DI_SINI>"
-
-curl -X POST http://localhost:3000/api/orders \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "items": [
-      {
-        "menuItemId": "ba6a533e-ce39-4db0-a6db-66073be98715",
-        "quantity": 2,
-        "price": 35000
-      }
-    ]
-  }'
-```
-
-### D. Uji Lihat Riwayat Pesanan
-```bash
-curl -X GET http://localhost:3000/api/orders \
-  -H "Authorization: Bearer $TOKEN"
-```
+*Salin token dari field `token` pada response JSON.*
 
 ---
 
-## 4. Panduan Demonstrasi End-to-End di Aplikasi Mobile
+### B. Uji Simpan Device Token (Push Notification)
+```bash
+curl -X POST http://localhost:3000/api/devices \
+  -H "Authorization: Bearer <TOKEN_ANDA>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "ExponentPushToken[AbCdEf1234567890]",
+    "platform": "mobile"
+  }'
+```
+*Expected: HTTP 200 `{ "success": true, "data": { ... } }`.*
 
-Ikuti langkah-langkah skenario demo berikut untuk melihat interaksi penuh sistem:
+---
 
-1. **Autentikasi**:
-   - Buka aplikasi. Anda akan disambut di halaman **Login**.
-   - Masukkan email `budi@mail.com` dan password `password123`, lalu tekan **Masuk**.
-2. **Eksplorasi Restoran & Keranjang**:
-   - Di halaman utama (**Home**), pilih restoran yang diinginkan (misal: *Nasi Goreng Gila*).
-   - Tekan tombol **(+)** pada menu untuk menambahkan item ke keranjang.
-   - Bilah hijau **Lihat Keranjang (1)** akan muncul di bagian bawah. Tekan bilah tersebut untuk masuk ke **Checkout**.
-3. **Proses Checkout**:
-   - Di layar **Checkout**, periksa ringkasan menu, alamat pengantaran, dan rincian biaya.
-   - Tekan tombol hijau **Pesan Sekarang**.
-   - Order akan terkirim ke backend API dan Redux akan mencatat `status: success` beserta `Order ID`.
-4. **Pelacakan Real-time (Live Tracking)**:
-   - Pilih opsi **Lacak Pesanan** pada dialog konfirmasi.
-   - Layar **Order Tracking** akan terbuka dan terhubung secara otomatis ke Room pesanan tersebut via Socket.io.
-5. **Simulasi Gerakan Driver**:
-   - Tekan tombol **Simulator** di pojok kanan atas layar tracking.
-   - Anda akan diarahkan ke layar **Driver Simulator** dengan `Order ID` yang sudah terisi otomatis.
-   - Tekan tombol biru **Jalankan Rute Otomatis (5 Titik)**.
-   - Kembali ke layar tracking: Anda akan melihat koordinat lintang & bujur serta status perjalanan driver ter-update secara berkala **tanpa perlu me-refresh halaman**!
+### C. Uji Buat Transaksi Pembayaran
+```bash
+curl -X POST http://localhost:3000/api/payments \
+  -H "Authorization: Bearer <TOKEN_ANDA>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orderId": "<ORDER_ID_DARI_DATABASE>",
+    "method": "QRIS"
+  }'
+```
+*Expected: HTTP 201 `{ "success": true, "data": { "status": "PENDING", ... } }`.*
+
+---
+
+### D. Uji Simulator Pembayaran (PAID)
+```bash
+curl -X POST http://localhost:3000/api/payments/simulate \
+  -H "Authorization: Bearer <TOKEN_ANDA>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "paymentId": "<PAYMENT_ID>",
+    "status": "PAID"
+  }'
+```
+*Expected:*
+1. HTTP 200 `{ "success": true, "data": { "status": "PAID" }, "order": { "status": "CONFIRMED" } }`.
+2. Di terminal server backend akan muncul log:
+   `🔔 [PUSH] Mengirim notifikasi ke userId "..." : "Pembayaran Berhasil"`
+
+---
+
+## 📱 4. Pengujian End-to-End dari Aplikasi Mobile
+
+Untuk memvalidasi skenario lengkap dari sisi pengguna:
+
+1. **Buka Aplikasi & Login**:
+   - Masuk menggunakan tombol **"Demo Customer (Budi)"**.
+   - Perhatikan log terminal: `[PUSH] Device token berhasil terdaftar untuk user yang sedang aktif`.
+2. **Pilih Makanan**:
+   - Klik salah satu restoran (misal: "Nasi Goreng Gila Gondangdia").
+   - Tambahkan menu ke keranjang dengan menekan ikon `(+)`.
+3. **Checkout**:
+   - Tekan tombol **"Lihat Keranjang"** atau navigasi ke Checkout.
+   - Pilih metode pembayaran: **"QRIS Gopay / BCA / Mandiri"**.
+   - Tekan tombol **"Lanjut ke Pembayaran"**.
+4. **Simulator Pembayaran**:
+   - Modal simulator pembayaran akan muncul dengan nominal tagihan dan Order ID.
+   - Tekan tombol hijau **"Simulasi Berhasil (PAID)"**.
+   - Notifikasi push akan dipicu dari backend, status order berubah menjadi `CONFIRMED`, dan muncul notifikasi sukses.
+5. **Pelacakan Kurir Real-Time**:
+   - Tekan **"Lacak Pesanan"** di dialog sukses.
+   - Layar pelacakan kurir akan menampilkan peta Jakarta live dan posisi motor bergerak menyusuri jalan.
+6. **Periksa Riwayat Pesanan**:
+   - Buka menu **"Riwayat"**.
+   - Pesanan Anda akan tercatat dengan status `CONFIRMED` dan label `QRIS • PAID`.

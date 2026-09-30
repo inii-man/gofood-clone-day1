@@ -17,6 +17,7 @@ interface CartContextType {
   items: CartItem[];
   addToCart: (item: Omit<CartItem, 'quantity'>) => void;
   removeFromCart: (id: string) => void;
+  clearCart: () => void;
   totalItems: number;
   totalPrice: number;
 }
@@ -66,6 +67,10 @@ export function CartProvider({
     );
   };
 
+  const clearCart = () => {
+    setItems([]);
+  };
+
   const totalItems = items.reduce(
     (sum, i) => sum + i.quantity,
     0
@@ -82,6 +87,7 @@ export function CartProvider({
         items,
         addToCart,
         removeFromCart,
+        clearCart,
         totalItems,
         totalPrice,
       }}

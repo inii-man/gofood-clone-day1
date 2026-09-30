@@ -1,6 +1,6 @@
 # 📱 04. Bedah Kode Mobile (Deep-Dive)
 
-Dokumen ini membedah arsitektur dan kode aplikasi mobile pada direktori [`mobile/`](file:///Users/sulaimansaleh/Documents/uob-fullstack-mobile/gofood-clone-day1/mobile).
+Dokumen ini membedah arsitektur dan implementasi kode pada direktori [`mobile/`](file:///Users/sulaimansaleh/Documents/uob-fullstack-mobile/gofood-clone-day1/mobile) hingga penambahan fitur Day 3 (Push Notification, Payment Simulator, FlatList, dan Sinkronisasi Token).
 
 ---
 
@@ -9,161 +9,149 @@ Dokumen ini membedah arsitektur dan kode aplikasi mobile pada direktori [`mobile
 ```text
 mobile/
 ├── src/
-│   ├── components/               # Komponen UI modular (SearchBar, CategoryItem, RestaurantCard, TrackingMap)
+│   ├── components/
+│   │   ├── SearchBar.tsx           # Kotak pencarian visual di Home
+│   │   ├── CategoryItem.tsx        # Tombol pill kategori makanan
+│   │   ├── RestaurantCard.tsx      # Komponen kartu informasi restoran
+│   │   └── TrackingMap.tsx         # WebView peta interaktif Leaflet + OpenStreetMap
 │   ├── context/
-│   │   ├── AuthContext.tsx       # State sesi login & token (AsyncStorage)
-│   │   └── CartContext.tsx       # State keranjang belanja lokal
-│   ├── data/
-│   │   └── dummy.ts              # Data mockup fallback kategori & menu
+│   │   ├── AuthContext.tsx         # Manajemen sesi login & AsyncStorage
+│   │   └── CartContext.tsx         # Manajemen keranjang belanja & fungsi clearCart
 │   ├── navigation/
-│   │   └── AppNavigator.tsx      # Manajemen router & auth protection stack
+│   │   └── AppNavigator.tsx        # React Navigation Native Stack
 │   ├── screens/
-│   │   ├── LoginScreen.tsx       # Layar login akun
-│   │   ├── RegisterScreen.tsx    # Layar pendaftaran akun baru
-│   │   ├── HomeScreen.tsx        # Layar utama (daftar restoran, promo, filter)
-│   │   ├── RestaurantDetailScreen.tsx # Daftar menu makanan restoran & tambah keranjang
-│   │   ├── CheckoutScreen.tsx    # Ringkasan belanja, Redux sync, & eksekusi order
-│   │   ├── OrderHistoryScreen.tsx# Riwayat pesanan pengguna
-│   │   ├── OrderTrackingScreen.tsx # Visualisasi pelacakan kurir real-time (Socket.io)
-│   │   └── DriverSimulatorScreen.tsx # Simulator pergerakan kurir untuk demo
+│   │   ├── LoginScreen.tsx         # Layar login dengan tombol demo
+│   │   ├── RegisterScreen.tsx      # Layar pendaftaran akun baru
+│   │   ├── HomeScreen.tsx          # Layar beranda katalog makanan
+│   │   ├── RestaurantDetailScreen.tsx # Layar detail restoran & daftar menu
+│   │   ├── CheckoutScreen.tsx      # Layar checkout & Interactive Payment Simulator Modal
+│   │   ├── OrderHistoryScreen.tsx  # Layar riwayat pesanan (FlatList berkinerja tinggi)
+│   │   ├── OrderTrackingScreen.tsx # Layar pelacakan kurir real-time (Socket.io)
+│   │   └── DriverSimulatorScreen.tsx # Layar simulator pergerakan driver di peta
 │   ├── services/
-│   │   ├── api.ts                # Konfigurasi Axios & Bearer Token Interceptor
-│   │   ├── orderApi.ts           # Service pemanggilan API orders
-│   │   └── socket.ts             # Inisialisasi Socket.io client & room joiner
-│   ├── store/
-│   │   ├── orderSlice.ts         # Redux slice untuk alur pesanan
-│   │   └── store.ts              # Konfigurasi Redux Store
-│   └── types/
-│       └── index.ts              # TypeScript interface definitions
-├── App.tsx                       # Root wrapper (Redux + Context + Statusbar)
-├── app.json
+│   │   ├── api.ts                  # Axios client terpusat + Request/Response Interceptor
+│   │   ├── orderApi.ts             # API helper untuk membuat & mengambil pesanan
+│   │   ├── socket.ts               # Socket.io client instance
+│   │   ├── notification.ts         # Service registrasi Expo Push Notification & foreground handler
+│   │   ├── deviceApi.ts            # API helper pendaftaran device token ke server
+│   │   └── paymentApi.ts           # API helper createPayment & simulatePayment
+│   └── store/
+│       ├── orderSlice.ts           # Redux Toolkit slice untuk status checkout
+│       └── store.ts                # Konfigurasi Redux Store
+├── App.tsx                         # Entry point aplikasi + Sinkronisasi push token
 ├── package.json
-└── tsconfig.json
+└── .env
 ```
 
 ---
 
-## 2. Bedah Komponen & Layer Utama
+## 2. Bedah Komponen & Modul Penting
 
-### A. Provider Stacking di `App.tsx`
-Semua konteks state dibungkus secara hierarkis:
-```tsx
-export default function App() {
-  return (
-    <ReduxProvider store={store}>
-      <AuthProvider>
-        <CartProvider>
-          <StatusBar style="dark" />
-          <AppNavigator />
-        </CartProvider>
-      </AuthProvider>
-    </ReduxProvider>
-  );
+### A. Sinkronisasi Push Token di `App.tsx` (Slide 10 & 18)
+Komponen `NotificationSync` memastikan bahwa ketika token Expo Push diperoleh dari perangkat, token tersebut otomatis didaftarkan dan dikaitkan dengan user yang sedang login di server:
+
+```typescript
+function NotificationSync() {
+  const { token: authToken } = useAuth();
+  const [pushToken, setPushToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    registerForPushNotifications().then((token) => {
+      if (token) {
+        setPushToken(token);
+        registerDevice(token).catch(() => {});
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (pushToken && authToken) {
+      registerDevice(pushToken).catch((err) =>
+        console.warn('Gagal sinkronisasi token dengan user:', err.message)
+      );
+    }
+  }, [pushToken, authToken]);
+
+  return null;
 }
 ```
-Hierarki ini memastikan komponen navigasi dan layar memiliki akses serentak ke Redux store (aliran order), Auth context (data user), dan Cart context (keranjang belanja).
 
 ---
 
-### B. Proteksi Navigasi di `src/navigation/AppNavigator.tsx`
-Navigasi secara otomatis beralih antara **Auth Stack** dan **App Stack** bergantung pada kondisi `user`:
-```tsx
-const { user, isLoading } = useAuth();
+### B. `src/services/notification.ts` (Slide 9)
+Mengatur izin notifikasi, membuat saluran Android, dan mengonfigurasi handler notifikasi foreground:
 
-if (isLoading) {
-  return <ActivityIndicator size="large" color="#00AA13" />;
+```typescript
+// Notifikasi tetap muncul saat aplikasi sedang aktif di layar (foreground)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+export async function registerForPushNotifications(): Promise<string | null> {
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') return null;
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#00AA13',
+    });
+  }
+
+  const tokenResponse = await Notifications.getExpoPushTokenAsync();
+  return tokenResponse.data;
 }
+```
 
-return (
-  <NavigationContainer>
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!user ? (
-        // Hanya bisa diakses saat pengguna BELUM login
-        <>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-        </>
-      ) : (
-        // Hanya bisa diakses saat pengguna SUDAH login
-        <>
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="RestaurantDetail" component={RestaurantDetailScreen} />
-          <Stack.Screen name="Checkout" component={CheckoutScreen} />
-          <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
-          <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
-          <Stack.Screen name="DriverSimulator" component={DriverSimulatorScreen} />
-        </>
-      )}
-    </Stack.Navigator>
-  </NavigationContainer>
+---
+
+### C. `src/screens/CheckoutScreen.tsx` — Payment Simulator (Slide 22, 27, 29, 30)
+Layar checkout telah dilengkapi dengan:
+1. **Pemilih Metode Pembayaran**: QRIS, GoPay, Virtual Account, Tunai.
+2. **Interactive Modal Simulator**:
+   - Memanggil `createOrder(payload)` dan `createPayment(orderId, method)`.
+   - Menampilkan modal popup status `PENDING` dengan nominal dan rincian transaksi.
+   - Tombol **"Simulasi Berhasil (PAID)"** ➔ memanggil `simulatePayment(id, 'PAID')`, mengosongkan keranjang belanja (`clearCart()`), memunculkan alert sukses, dan tombol langsung ke pelacakan kurir (`OrderTracking`).
+   - Tombol **"Simulasi Gagal (FAILED)"** ➔ mensimulasikan penolakan pembayaran.
+
+---
+
+### D. Optimasi FlatList di `OrderHistoryScreen.tsx` (Slide 48)
+Alih-alih menggunakan `.map()` di dalam `ScrollView` yang memuat seluruh DOM sekaligus, riwayat pesanan menggunakan `FlatList`:
+- Komponen hanya merender elemen yang tampak di layar (*windowing / virtualization*).
+- Menghemat memori HP dan memastikan scroll mulus (*60 FPS*) meski terdapat ratusan transaksi.
+- Menampilkan indikator status pesanan dan rincian pembayaran (`PAID` / `PENDING`).
+
+---
+
+### E. Axios Response Interceptor di `src/services/api.ts` (Slide 43)
+Mendeteksi kegagalan API secara terpusat untuk mempermudah debugging:
+
+```typescript
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    console.warn(`❌ [API Error] Status: ${status || 'NETWORK_ERROR'}`);
+    if (status === 401) {
+      console.warn('👉 Request ditolak 401 Unauthorized! Periksa token di AsyncStorage.');
+    }
+    return Promise.reject(error);
+  }
 );
 ```
-
----
-
-### C. Manajemen Sesi Persisten di `src/context/AuthContext.tsx`
-- **Restore Session**: Saat aplikasi dibuka, `useEffect` membaca `auth_token` dan `auth_user` dari `AsyncStorage`. Jika ditemukan, user langsung masuk tanpa perlu login ulang.
-- **Login Function**: Menyimpan token ke `AsyncStorage` dan mengupdate state.
-- **Logout Function**: Menghapus `auth_token` dan `auth_user` sehingga navigasi otomatis kembali ke layar Login.
-
----
-
-### D. Axios Request Interceptor di `src/services/api.ts`
-Untuk mempermudah pemanggilan endpoint privat, setiap HTTP request secara transparan dicegat untuk menyematkan JWT Token:
-```typescript
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-```
-
----
-
-### E. Redux Toolkit di `src/store/orderSlice.ts`
-Mengatur lifecycle proses checkout:
-```typescript
-interface OrderState {
-  items: any[];
-  status: 'idle' | 'loading' | 'success' | 'failed';
-  orderId: string | null;
-}
-```
-- `setItems`: Menyimpan daftar item belanja yang akan dicheckout.
-- `setStatus`: Melacak status loading API untuk mengatur UI tombol dan animasi.
-- `setOrderId`: Menyimpan ID pesanan yang baru saja berhasil dibuat.
-
----
-
-### F. Real-time Live Tracking di `src/screens/OrderTrackingScreen.tsx`
-1. Saat layar dibuka, memanggil `joinOrderRoom(orderId)` untuk bergabung ke room WebSocket pesanan tersebut.
-2. Mendengarkan event `location-updated`:
-   ```typescript
-   useEffect(() => {
-     joinOrderRoom(orderId);
-
-     const handleLocationUpdate = (location) => {
-       setDriverLocation({
-         latitude: location.latitude,
-         longitude: location.longitude,
-         updatedAt: new Date().toLocaleTimeString(),
-       });
-     };
-
-     socket.on('location-updated', handleLocationUpdate);
-     return () => {
-       socket.off('location-updated', handleLocationUpdate);
-     };
-   }, [orderId]);
-   ```
-3. Menampilkan visualisasi rute interaktif, rincian koordinat lintang & bujur secara dinamis, kartu profil kurir, dan ringkasan pesanan.
-
----
-
-### G. Driver Simulator di `src/screens/DriverSimulatorScreen.tsx`
-Dirancang khusus untuk demonstrasi dan testing tanpa perlu aplikasi kurir fisik terpisah:
-- Pengguna dapat memasukkan `orderId` dan koordinat bebas.
-- Terdapat pilihan **Preset Rute** (Restoran ➔ Jl. Sudirman ➔ Semanggi ➔ Tiba di Tujuan).
-- Fitur **Jalankan Rute Otomatis (5 Titik)**: Menggunakan interval waktu (setiap 2.5 detik) untuk mengirimkan event `driver-location` bertahap, sehingga pergerakan kurir dapat dilihat langsung di layar pelacakan pelanggan.

@@ -1,6 +1,6 @@
-# 🍕 GoFood Clone — Fullstack Mobile (Day 1 & Day 2)
+# 🍕 GoFood Clone — Fullstack Mobile (Day 1, Day 2 & Day 3)
 
-Hands-on project pembelajaran Fullstack Mobile Development (**GoFood Clone**). Terdiri dari backend REST API & WebSocket menggunakan **Node.js, Express, Prisma ORM, PostgreSQL, dan Socket.io**, serta aplikasi mobile cross-platform menggunakan **React Native (Expo SDK 57), TypeScript, Context API, Redux Toolkit, dan OpenStreetMap**.
+Hands-on project pembelajaran Fullstack Mobile Development (**GoFood Clone**). Terdiri dari backend REST API & WebSocket menggunakan **Node.js, Express, Prisma ORM, PostgreSQL, Socket.io, dan Jest**, serta aplikasi mobile cross-platform menggunakan **React Native (Expo SDK 57), TypeScript, Context API, Redux Toolkit, Expo Notifications, dan OpenStreetMap**.
 
 ---
 
@@ -8,10 +8,10 @@ Hands-on project pembelajaran Fullstack Mobile Development (**GoFood Clone**). T
 
 ### **Day 1: Store & Food Catalog**
 - 🏬 **Katalog Restoran & Menu**: Menampilkan banner promo, kategori makanan, rating, estimasi waktu, dan daftar menu makanan.
-- 🛒 **Cart Management**: Context API (`CartContext`) untuk menambah, menghapus, dan menghitung total belanja.
+- 🛒 **Cart Management**: Context API (`CartContext`) untuk menambah, menghapus, menghitung total belanja, dan mengosongkan keranjang.
 - 🗄️ **Database & Seeder**: PostgreSQL + Prisma ORM dengan data awal restoran & makanan.
 
-### **Day 2: From Cart to Live Order**
+### **Day 2: From Cart to Live Order & Tracking**
 - 🔐 **Autentikasi & Otorisasi**: Registrasi, Login, Password Hashing (`bcryptjs`), Token JWT (`jsonwebtoken`), dan sesi login persisten via `AsyncStorage`.
 - ⚙️ **Advanced State Management**: Redux Toolkit (`orderSlice`) untuk mengelola lifecycle checkout pesanan (`idle` ➔ `loading` ➔ `success` / `failed`).
 - 📦 **Order Management**: Pembuatan pesanan (`POST /api/orders`) terproteksi JWT, kalkulasi total harga otomatis di backend, dan riwayat pesanan (`GET /api/orders`).
@@ -19,37 +19,64 @@ Hands-on project pembelajaran Fullstack Mobile Development (**GoFood Clone**). T
 - 🗺️ **Peta Interaktif Live (OpenStreetMap + Leaflet)**: Visualisasi peta nyata tanpa perlu Google Maps API Key.
 - 🎮 **In-Screen Driver Simulator**: Simulasi pergerakan motor kurir nyata menyusuri 12 titik jalan raya Jakarta (*Sudirman ➔ Semanggi ➔ Senayan*).
 
+### **Day 3: Production Readiness — Notifications, Payments, Testing & Performance**
+- 🔔 **Push Notifications & Device Token**:
+  - Model Prisma `DeviceToken` untuk menyimpan token perangkat per user (support multi-device).
+  - Endpoint `POST /api/devices` dengan upsert token perangkat.
+  - Integrasi `expo-notifications` di mobile dengan handler notifikasi foreground & sync token otomatis saat login.
+  - Event-based notification engine (`ORDER_CREATED`, `PAYMENT_SUCCESS`, `ORDER_CONFIRMED`, `DRIVER_ASSIGNED`, `ORDER_COMPLETED`).
+- 💳 **Payment Module & Interactive Simulator**:
+  - Model Prisma `Payment` dengan relasi 1-to-1 ke `Order` (`orderId`, `amount`, `status: PENDING | PAID | FAILED`, `method`).
+  - Endpoint `POST /api/payments` untuk membuat transaksi pembayaran saat checkout.
+  - Endpoint `POST /api/payments/simulate` untuk mensimulasikan hasil pembayaran (`PAID` atau `FAILED`) tanpa perlu payment gateway sungguhan.
+  - Transisi status otomatis: Pembayaran `PAID` ➔ Order menjadi `CONFIRMED` & Push Notification otomatis dikirimkan ke perangkat user.
+  - Modal simulator interaktif di aplikasi mobile dengan pilihan metode: QRIS, GoPay, Virtual Account, & Tunai.
+- 🧪 **Automated Unit Testing**:
+  - Setup Jest + `ts-jest` di backend dengan script `npm test`.
+  - Unit test `calculateTotal.test.ts` untuk menguji kalkulasi subtotal harga pesanan & pengujian skenario negatif (keranjang kosong).
+- ⚡ **Performance & Database Query Optimization**:
+  - Query database teroptimasi dengan paginasi (`page`, `limit`, `skip`, `take`) pada order API.
+  - Penggunaan `FlatList` pada aplikasi mobile untuk merender riwayat pesanan dalam jumlah besar secara efisien tanpa lag.
+
 ---
 
 ## 🗂️ Struktur Proyek
 
 ```text
 gofood-clone-day1/
-├── backend/                  # REST API & WebSocket Server (Express + Socket.io + Prisma)
-│   ├── prisma/               # Schema PostgreSQL & Seeder data
-│   ├── src/                  # Controllers, Routes, Middleware, & server.ts
+├── backend/                  # REST API, WebSocket & Notification Engine
+│   ├── prisma/
+│   │   ├── schema.prisma     # Skema DB: User, Restaurant, MenuItem, Order, OrderItem, DeviceToken, Payment
+│   │   └── seed.ts           # Seeder restoran, menu & user demo
+│   ├── src/
+│   │   ├── controllers/      # authController, orderController, restaurantController, deviceController, paymentController
+│   │   ├── middleware/       # authMiddleware (JWT Verification & Role check)
+│   │   ├── prisma/           # client.ts (Prisma Singleton)
+│   │   ├── routes/           # authRoutes, orderRoutes, restaurantRoutes, deviceRoutes, paymentRoutes
+│   │   ├── services/         # notificationService.ts (Expo Push sender & notification events)
+│   │   ├── utils/            # calculateTotal.ts & calculateTotal.test.ts
+│   │   └── server.ts         # Inisialisasi Express, Middleware logger, Socket.io, & Health check
+│   ├── jest.config.js        # Konfigurasi Jest + ts-jest
 │   ├── .env.example
 │   └── package.json
-├── mobile/                   # Aplikasi Mobile React Native (Expo)
+├── mobile/                   # Aplikasi Mobile React Native (Expo SDK 57)
 │   ├── src/
 │   │   ├── components/       # SearchBar, CategoryItem, RestaurantCard, TrackingMap
-│   │   ├── context/          # AuthContext (AsyncStorage), CartContext
-│   │   ├── navigation/       # AppNavigator (Auth Guard & Native Stack)
-│   │   ├── screens/          # Login, Register, Home, Detail, Checkout, History, Tracking, Simulator
-│   │   ├── services/         # api.ts (Axios + Interceptor), orderApi.ts, socket.ts
+│   │   ├── context/          # AuthContext (AsyncStorage & auto-sync), CartContext
+│   │   ├── navigation/       # AppNavigator (Native Stack & Auth Guard)
+│   │   ├── screens/          # Login, Register, Home, RestaurantDetail, Checkout, OrderHistory, OrderTracking, DriverSimulator
+│   │   ├── services/         # api.ts, orderApi.ts, socket.ts, notification.ts, deviceApi.ts, paymentApi.ts
 │   │   └── store/            # Redux Toolkit (orderSlice, store.ts)
 │   ├── .env.example
-│   ├── App.tsx               # Root Provider Wrapper
+│   ├── App.tsx               # Root Provider + Push Notification Sync Wrapper
 │   └── package.json
-├── docs/                     # 📚 Dokumentasi lengkap arsitektur, kode, & alur aplikasi
+├── docs/                     # 📚 Dokumentasi lengkap arsitektur, kode, alur, & testing
 │   ├── 01_ARSITEKTUR_DAN_OVERVIEW.md
 │   ├── 02_ALUR_FLOW_APLIKASI.md
 │   ├── 03_BEDAH_KODE_BACKEND.md
 │   ├── 04_BEDAH_KODE_MOBILE.md
 │   └── 05_PANDUAN_SETUP_DAN_TESTING.md
-├── jwt-playground/           # 🔑 Playground visual & interaktif untuk belajar JWT & Login
-│   ├── index.html            # Web UI playground (jwt.io style + simulasi login)
-│   └── playground.js         # Script Node.js native crypto
+├── jwt-playground/           # 🔑 Playground visual interaktif untuk belajar JWT
 └── README.md
 ```
 
@@ -70,14 +97,20 @@ gofood-clone-day1/
    PORT=3000
    ```
 
-3. **Inisialisasi Database:**
+3. **Inisialisasi Skema Database & Jalankan Seeder:**
    ```bash
    npx prisma db push
    npx prisma generate
    npm run seed
    ```
 
-4. **Jalankan Server:**
+4. **Jalankan Unit Test:**
+   ```bash
+   npm test
+   ```
+   *Output akan memverifikasi kalkulasi total item dan skenario negatif.*
+
+5. **Jalankan Server:**
    ```bash
    npm run dev
    ```
@@ -104,6 +137,8 @@ gofood-clone-day1/
    ```
    *Contoh:* `EXPO_PUBLIC_API_URL=http://192.168.88.7:3000/api`
 
+
+
 3. **Jalankan Expo:**
    ```bash
    npx expo start -c
@@ -113,48 +148,70 @@ gofood-clone-day1/
 
 ---
 
-## 🛠️ Troubleshooting & Panduan Solusi Error
+## 🧪 3. Pengujian API via cURL (Day 3 Endpoints)
 
-### 🔴 1. Student Bisa Login, Tapi Saat Checkout Muncul Error `401 Unauthorized`
-Ini adalah kendala yang paling sering dialami peserta:
+### A. Simpan Device Token untuk Push Notification
+```bash
+curl -X POST http://localhost:3000/api/devices \
+  -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+    "platform": "mobile"
+  }'
+```
 
-- **Penyebab Utama**: Token JWT tidak terkirim di header HTTP saat memanggil `POST /api/orders`. Di slide materi Day 2 belum menyertakan kode Axios Interceptor.
-- **Solusi**: Pastikan di `mobile/src/services/api.ts` sudah dipasang **Request Interceptor**:
-  ```typescript
-  import AsyncStorage from '@react-native-async-storage/async-storage';
+### B. Buat Transaksi Pembayaran
+```bash
+curl -X POST http://localhost:3000/api/payments \
+  -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orderId": "<ORDER_ID>",
+    "method": "QRIS"
+  }'
+```
 
-  api.interceptors.request.use(async (config) => {
-    const token = await AsyncStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`; // Wajib format: Bearer <spasi> token
-    }
-    return config;
-  });
-  ```
-- **Penyebab Kedua (Beda nama field payload)**:
-  - Di `authController.ts` token di-generate dengan: `{ userId: user.id }`.
-  - Di `orderController.ts` student membaca: `req.user.id` (bukan `req.user.userId`), sehingga bernilai `undefined`.
-  - **Solusi**: Gunakan fallback `const userId = req.user?.userId || req.user?.id;`.
+### C. Jalankan Simulator Pembayaran (PAID)
+```bash
+curl -X POST http://localhost:3000/api/payments/simulate \
+  -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "paymentId": "<PAYMENT_ID>",
+    "status": "PAID"
+  }'
+```
+*Hasil: Status payment menjadi `PAID`, status pesanan berubah menjadi `CONFIRMED`, dan push notification otomatis dikirim ke token perangkat.*
 
 ---
 
-### 🔴 2. Error `API TIMEOUT 10000MS` / Gagal Terhubung ke Server
+## 🛠️ Troubleshooting & Panduan Solusi Error
+
+### 🔴 1. Student Bisa Login, Tapi Saat Checkout Muncul Error `401 Unauthorized`
+- **Penyebab**: Token JWT tidak terkirim di header HTTP saat memanggil API terproteksi.
+- **Solusi**: Pastikan di `mobile/src/services/api.ts` sudah dipasang **Request Interceptor** yang mengambil token dari `AsyncStorage` dan menambahkan header `Authorization: Bearer <token>`.
+
+### 🔴 2. Push Notification Tidak Muncul di Simulator
+- **Penyebab**: iOS Simulator & beberapa Android emulator tidak mendukung push notifications jarak jauh (remote push) secara default.
+- **Solusi**: 
+  - Gunakan perangkat smartphone fisik dengan **Expo Go** untuk menguji penerimaan push notification nyata.
+  - Di console backend, log pengiriman notifikasi tetap tercatat lengkap dengan status pengiriman ke endpoint Expo Push API.
+
+### 🔴 3. Error `API TIMEOUT 10000MS` / Gagal Terhubung ke Server
 - **Penyebab**: Alamat IP laptop/komputer Anda berubah (misalnya setelah berganti koneksi Wi-Fi).
 - **Solusi**:
   1. Cek kembali IP aktif Anda: `ipconfig getifaddr en0`.
   2. Buka `mobile/.env` dan perbarui `EXPO_PUBLIC_API_URL` dengan IP baru.
   3. Restart Expo dengan flag cache bersih: `npx expo start -c`.
 
----
-
-### 🔴 3. Error `listen EADDRINUSE: address already in use 0.0.0.0:3000`
-- **Penyebab**: Proses node backend sebelumnya masih berjalan di background dan belum tertutup sempurna.
+### 🔴 4. Error `listen EADDRINUSE: address already in use 0.0.0.0:3000`
+- **Penyebab**: Proses node backend sebelumnya masih berjalan di background.
 - **Solusi**:
   ```bash
-  # Cari dan matikan proses yang menggunakan port 3000:
   lsof -ti :3000 | xargs kill -9
+  npm run dev
   ```
-  Lalu jalankan kembali `npm run dev`.
 
 ---
 
@@ -163,7 +220,7 @@ Ini adalah kendala yang paling sering dialami peserta:
 1. **Dokumentasi Lengkap Proyek**:
    Pelajari detail arsitektur, flow bisnis, dan bedah kode line-by-line di folder [**`docs/`**](./docs/README.md).
 2. **Interactive JWT Playground**:
-   Buka playground visual untuk memahami anatomi token, tampering/hacking detector, dan simulasi login di folder [**`jwt-playground/`**](./jwt-playground/README.md).
+   Buka playground visual untuk memahami anatomi token, tampering detector, dan simulasi login di folder [**`jwt-playground/`**](./jwt-playground/README.md):
    ```bash
    open jwt-playground/index.html
    ```

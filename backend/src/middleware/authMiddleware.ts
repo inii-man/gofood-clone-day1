@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
   user?: {
+    id: string;
     userId: string;
     role: string;
   };
@@ -31,11 +32,14 @@ export const authenticate = (
       process.env.JWT_SECRET || 'fallback_secret'
     ) as any;
 
+    const id = decoded.userId || decoded.id;
     req.user = {
-      userId: decoded.userId || decoded.id,
+      id,
+      userId: id,
       role: decoded.role || 'CUSTOMER',
     };
     next();
+
   } catch (err: any) {
     console.warn('[authMiddleware] Verifikasi token gagal:', err.message);
     return res.status(401).json({

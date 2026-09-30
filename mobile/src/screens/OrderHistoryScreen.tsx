@@ -27,6 +27,12 @@ interface Order {
   totalPrice: number;
   createdAt: string;
   items: OrderItem[];
+  payment?: {
+    id: string;
+    amount: number;
+    status: string;
+    method: string;
+  };
 }
 
 export default function OrderHistoryScreen({ navigation }: any) {
@@ -59,6 +65,8 @@ export default function OrderHistoryScreen({ navigation }: any) {
 
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
+      case 'CONFIRMED':
+        return { bg: '#D1FAE5', text: '#065F46' };
       case 'COMPLETED':
         return { bg: '#DEF7EC', text: '#03543F' };
       case 'DELIVERING':
@@ -67,6 +75,7 @@ export default function OrderHistoryScreen({ navigation }: any) {
       case 'READY':
         return { bg: '#FEF08A', text: '#854D0E' };
       case 'CANCELLED':
+      case 'PAYMENT_FAILED':
         return { bg: '#FDE8E8', text: '#9B1C1C' };
       default:
         return { bg: '#F3F4F6', text: '#374151' };
@@ -96,12 +105,27 @@ export default function OrderHistoryScreen({ navigation }: any) {
             </Text>
             <Text style={styles.orderDate}>{dateFormatted}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-            <Text style={[styles.statusText, { color: statusStyle.text }]}>
-              {item.status}
-            </Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+              <Text style={[styles.statusText, { color: statusStyle.text }]}>
+                {item.status}
+              </Text>
+            </View>
+            {item.payment && (
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  marginTop: 4,
+                  color: item.payment.status === 'PAID' ? '#00AA13' : '#D97706',
+                }}
+              >
+                {item.payment.method} • {item.payment.status}
+              </Text>
+            )}
           </View>
         </View>
+
 
         <View style={styles.divider} />
 

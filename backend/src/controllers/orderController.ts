@@ -1,8 +1,10 @@
 import { Response } from 'express';
 import prisma from '../prisma/client';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { sendNotificationToUser, NOTIFICATION_EVENTS } from '../services/notificationService';
 
 export const createOrder = async (req: AuthRequest, res: Response) => {
+
   try {
     const { items } = req.body;
     const userId = req.user?.userId || (req.user as any)?.id;
@@ -47,10 +49,18 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
 
     console.log(`✅ [ORDER] Order #${order.id} BERHASIL dibuat! Total: Rp ${totalPrice.toLocaleString()}`);
 
+    // Slide 19: Kirim notifikasi event ORDER_CREATED
+    sendNotificationToUser(userId, {
+      title: NOTIFICATION_EVENTS.ORDER_CREATED.title,
+      body: NOTIFICATION_EVENTS.ORDER_CREATED.body(order.id),
+      data: { orderId: order.id, status: 'PENDING' },
+    }).catch((err) => console.log('Push notif order created err:', err));
+
     res.status(201).json({
       success: true,
       data: order,
     });
+
   } catch (error: any) {
     console.error('💥 [ORDER] Create order error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -66,6 +76,10 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized: User ID not found in token' });
     }
 
+    const page = req.query.page ? Math.max(1, Number(req.query.page)) : 1;
+    const limit = req.query.limit ? Math.max(1, Number(req.query.limit)) : 20;
+    const skip = (page - 1) * limit;
+
     const orders = await prisma.order.findMany({
       where: {
         userId,
@@ -76,11 +90,15 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
             menuItem: true,
           },
         },
+        payment: true,
       },
       orderBy: {
         createdAt: 'desc',
       },
+      skip,
+      take: limit,
     });
+
 
     res.json({
       success: true,
@@ -103,8 +121,10 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
             menuItem: true,
           },
         },
+        payment: true,
       },
     });
+
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });

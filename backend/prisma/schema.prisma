@@ -41,6 +41,7 @@ model User {
   createdAt    DateTime @default(now())
 
   orders       Order[]
+  deviceTokens DeviceToken[]
 }
 
 model Order {
@@ -52,6 +53,7 @@ model Order {
 
   user       User        @relation(fields: [userId], references: [id])
   items      OrderItem[]
+  payment    Payment?
 }
 
 model OrderItem {
@@ -64,3 +66,24 @@ model OrderItem {
   order      Order    @relation(fields: [orderId], references: [id])
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
 }
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  orderId       String   @unique
+  amount        Int
+  status        String   @default("PENDING")
+  method        String
+  transactionId String?
+  createdAt     DateTime @default(now())
+  order         Order    @relation(fields: [orderId], references: [id])
+}
+

@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { socket, joinOrderRoom } from '../services/socket';
 import { getOrderById } from '../services/orderApi';
+import { showLocalNotification } from '../services/notification';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TrackingMap from '../components/TrackingMap';
+
 
 interface DriverLocation {
   latitude: number;
@@ -60,7 +62,14 @@ export default function OrderTrackingScreen({ route, navigation }: any) {
       // Fetch initial order details
       getOrderById(orderId)
         .then((res) => {
-          if (res.data) setOrderDetails(res.data);
+          if (res.data) {
+            setOrderDetails(res.data);
+            // Notifikasi 4: DRIVER_ASSIGNED (Slide 19)
+            showLocalNotification(
+              '🛵 Driver Ditugaskan',
+              'Driver Pak Joko telah ditugaskan dan menuju ke restoran untuk mengambil pesanan Anda.'
+            );
+          }
         })
         .catch((err) => console.log('Fetch order detail err', err))
         .finally(() => setLoading(false));
@@ -124,9 +133,15 @@ export default function OrderTrackingScreen({ route, navigation }: any) {
       if (step >= REALISTIC_DELIVERY_PATH.length) {
         if (simTimerRef.current) clearInterval(simTimerRef.current);
         setIsSimulating(false);
+        // Notifikasi 5: ORDER_COMPLETED (Slide 19)
+        showLocalNotification(
+          '🎉 Pesanan Telah Tiba!',
+          'Driver telah tiba di alamat tujuan. Selamat menikmati makanan Anda!'
+        );
       }
     }, 1800);
   };
+
 
   const resetSimulation = () => {
     if (simTimerRef.current) clearInterval(simTimerRef.current);

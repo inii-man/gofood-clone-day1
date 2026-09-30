@@ -1,6 +1,6 @@
-# 📚 Dokumentasi Lengkap GoFood Clone (Day 1 & Day 2)
+# 📚 Dokumentasi Lengkap GoFood Clone (Day 1, Day 2 & Day 3)
 
-Selamat datang di dokumentasi resmi arsitektur, kode, dan alur aplikasi **GoFood Clone**. Dokumentasi ini dirancang untuk memberikan pemahaman menyeluruh baik secara konseptual (high-level architecture) maupun teknis (deep-dive source code).
+Selamat datang di dokumentasi resmi arsitektur, kode, dan alur aplikasi **GoFood Clone**. Dokumentasi ini dirancang untuk memberikan pemahaman menyeluruh baik secara konseptual (*high-level architecture*) maupun teknis (*deep-dive source code*) hingga kesiapan produksi (*production readiness*).
 
 ---
 
@@ -8,19 +8,19 @@ Selamat datang di dokumentasi resmi arsitektur, kode, dan alur aplikasi **GoFood
 
 | Dokumen | Topik Pembahasan |
 |---|---|
-| [**01. Arsitektur & Overview Aplikasi**](./01_ARSITEKTUR_DAN_OVERVIEW.md) | Visi aplikasi, teknologi stack, arsitektur monorepo/multi-repo, dan skema database (ERD). |
-| [**02. Alur & Flow Aplikasi (End-to-End)**](./02_ALUR_FLOW_APLIKASI.md) | Sequence diagram & alur: Auth JWT, Cart & Redux Checkout, Order Lifecycle, dan Real-time Driver Tracking Socket.io. |
-| [**03. Bedah Kode Backend (Deep-Dive)**](./03_BEDAH_KODE_BACKEND.md) | Penjelasan kode backend: Express server, Prisma ORM, Auth Controller, Order Controller, JWT Middleware, dan Socket.io Server. |
-| [**04. Bedah Kode Mobile (Deep-Dive)**](./04_BEDAH_KODE_MOBILE.md) | Penjelasan kode frontend: Expo React Native, Context API vs Redux Toolkit, AsyncStorage, Axios Interceptors, Socket Client, dan Screen Navigation. |
-| [**05. Panduan Menjalankan & Testing**](./05_PANDUAN_SETUP_DAN_TESTING.md) | Panduan langkah demi langkah menjalankan backend, mobile, migrasi database, simulasi driver, dan instruksi cURL testing. |
+| [**01. Arsitektur & Overview Aplikasi**](./01_ARSITEKTUR_DAN_OVERVIEW.md) | Visi aplikasi, teknologi stack (Frontend, Backend, Database, Testing, Notifications), dan skema basis data lengkap (ERD). |
+| [**02. Alur & Flow Aplikasi (End-to-End)**](./02_ALUR_FLOW_APLIKASI.md) | Sequence diagram & alur: Auth JWT, Cart & Redux Checkout, Order Lifecycle, Payment Flow & Simulator, Push Notification Engine, dan Real-time Driver Tracking Socket.io. |
+| [**03. Bedah Kode Backend (Deep-Dive)**](./03_BEDAH_KODE_BACKEND.md) | Penjelasan kode backend: Express server, Prisma ORM, Auth Controller, Order Controller (Paginasi DB), Device Controller, Payment Controller, Notification Service, dan Unit Testing Jest. |
+| [**04. Bedah Kode Mobile (Deep-Dive)**](./04_BEDAH_KODE_MOBILE.md) | Penjelasan kode frontend: Expo React Native, Context API vs Redux Toolkit, AsyncStorage, Axios Interceptors, Push Notifications Sync, Payment Simulator Modal, Socket Client, dan FlatList Performance. |
+| [**05. Panduan Menjalankan & Testing**](./05_PANDUAN_SETUP_DAN_TESTING.md) | Panduan langkah demi langkah menjalankan backend, mobile, migrasi database, eksekusi unit test (`npm test`), testing endpoint cURL (Auth, Orders, Payments, Devices), dan skenario pengujian simulator. |
 
 ---
 
 ## 🎯 Gambaran Umum Aplikasi
 
 Aplikasi ini adalah sistem pemesanan makanan berbasis mobile (*on-demand food delivery*) yang terbagi menjadi dua bagian utama:
-1. **`backend`**: REST API & WebSocket Server berbasis **Node.js, Express, TypeScript, Prisma ORM, PostgreSQL, dan Socket.io**.
-2. **`mobile`**: Aplikasi mobile lintas platform berbasis **React Native, Expo, TypeScript, Context API, Redux Toolkit, dan Socket.io-Client**.
+1. **`backend`**: REST API, WebSocket Server, dan Push Notification Dispatcher berbasis **Node.js, Express, TypeScript, Prisma ORM, PostgreSQL, Socket.io, dan Jest**.
+2. **`mobile`**: Aplikasi mobile lintas platform berbasis **React Native, Expo SDK 57, TypeScript, Context API, Redux Toolkit, Expo Notifications, dan Socket.io-Client**.
 
 ### Fitur Utama:
 - 🔐 **Autentikasi Aman**: Registrasi, Login, Password Hashing (`bcryptjs`), dan Token JWT (`jsonwebtoken`).
@@ -30,5 +30,9 @@ Aplikasi ini adalah sistem pemesanan makanan berbasis mobile (*on-demand food de
   - **AsyncStorage**: Menjaga sesi login tetap aktif meski aplikasi ditutup (*persistent session*).
   - **Redux Toolkit**: Mengelola alur transaksi checkout & status pesanan (*order flow state*).
 - 📦 **Order Management**: Pembuatan order dari cart, kalkulasi total harga otomatis, dan riwayat pesanan (*order history*).
+- 💳 **Payment Module & Interactive Simulator**: Pembuatan transaksi pembayaran, pemilihan metode bayar (QRIS, GoPay, VA, Tunai), dan modal simulator pembayaran (`PAID` / `FAILED`) yang memperbarui status order secara otomatis.
+- 🔔 **Push Notifications Terdistribusi**: Penyimpanan device token per pengguna, handler notifikasi foreground, dan pengiriman push notification berbasis event bisnis (`PAYMENT_SUCCESS`, `ORDER_CONFIRMED`) via Expo Push API.
 - 🛵 **Live Tracking Real-time**: Pelacakan pergerakan driver secara langsung via **Socket.io Room** tanpa perlu polling API atau refresh halaman.
-- 🎮 **Driver Simulator**: Antarmuka bawaan untuk mensimulasikan pergerakan kurir secara bertahap sepanjang rute pengantaran.
+- 🎮 **Driver Simulator**: Antarmuka bawaan untuk mensimulasikan pergerakan kurir secara bertahap sepanjang rute pengantaran Jakarta.
+- 🧪 **Automated Unit Testing**: Unit testing fungsi bisnis dengan framework Jest.
+- ⚡ **Optimasi Performa**: Paginasi query database dan virtualized list `FlatList` pada aplikasi mobile.

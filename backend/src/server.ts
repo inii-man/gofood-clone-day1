@@ -6,6 +6,8 @@ import { Server } from 'socket.io';
 import restaurantRoutes from './routes/restaurantRoutes';
 import authRoutes from './routes/authRoutes';
 import orderRoutes from './routes/orderRoutes';
+import deviceRoutes from './routes/deviceRoutes';
+import paymentRoutes from './routes/paymentRoutes';
 
 dotenv.config();
 
@@ -41,6 +43,9 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/devices', deviceRoutes);
+app.use('/api/payments', paymentRoutes);
+
 
 app.get('/', (_req, res) => {
   res.json({ message: 'API is running' });
@@ -71,11 +76,12 @@ app.use(
 
 // CREATE HTTP SERVER & SOCKET.IO SERVER
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
+export const io = new Server(httpServer, {
   cors: {
     origin: '*',
   },
 });
+
 
 app.get('/api/socket-rooms', (_req, res) => {
   const roomsMap = io.sockets.adapter.rooms;

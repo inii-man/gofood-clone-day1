@@ -1,104 +1,135 @@
-# Dokumentasi Kode: GoFood Clone (Day 1)
+# 📖 Dokumentasi Kode: GoFood Clone (Day 1, Day 2 & Day 3)
 
-Dokumen ini menjelaskan struktur kode, arsitektur, dan alur kerja aplikasi secara menyeluruh dari sisi Backend maupun Mobile. 
+Dokumen ini menjelaskan struktur kode, arsitektur, dan alur kerja aplikasi secara menyeluruh dari sisi Backend maupun Mobile hingga implementasi Day 3 (Production Readiness).
 
 ---
 
 ## 🏗️ Arsitektur Sistem Umum
 
-Aplikasi ini menggunakan pola **Client-Server**:
-1. **Client (Mobile)**: Dibangun dengan **React Native (Expo)**. Bertugas menampilkan Antarmuka Pengguna (UI) dan berinteraksi dengan pengguna.
-2. **Server (Backend)**: Dibangun dengan **Node.js, Express, dan TypeScript**. Bertugas melayani *request* data (REST API).
-3. **Database**: Menggunakan **PostgreSQL** dengan **Prisma ORM** sebagai penghubungnya.
+Aplikasi ini menggunakan pola **Client-Server Terdistribusi**:
+1. **Client (Mobile)**: Dibangun dengan **React Native (Expo SDK 57)**. Menggunakan Context API & Redux Toolkit untuk state management, Axios untuk komunikasi REST API, Socket.io-Client untuk pelacakan kurir, serta `expo-notifications` untuk menerima push notification.
+2. **Server (Backend)**: Dibangun dengan **Node.js, Express, dan TypeScript**. Bertugas melayani REST API, verifikasi JWT Bearer, WebSocket Server (Socket.io) dengan Room khusus pesanan, integrasi push notification ke Expo Push service, dan unit test berbasis Jest.
+3. **Database**: Menggunakan **PostgreSQL** dengan **Prisma ORM** sebagai penghubung type-safe.
 
-Alur data secara sederhana:
-**Mobile (Axios)** ➡️ **Backend (Express Route -> Controller)** ➡️ **Prisma ORM** ➡️ **PostgreSQL** ➡️ (kembali ke UI)
+Alur data secara umum:
+**Mobile (Axios)** ➡️ **Backend (Express Route ➔ Middleware ➔ Controller)** ➡️ **Prisma ORM** ➡️ **PostgreSQL** ➡️ (kembali ke UI)
 
 ---
 
-## 🗄️ Bagian 1: Backend (Node.js + Express)
+## 🗄️ Bagian 1: Backend (Node.js + Express + Prisma)
 Berlokasi di folder `/backend`.
 
 ### 1. `prisma/schema.prisma`
-Ini adalah inti dari struktur *database*. Terdapat dua model utama:
-- `Restaurant`: Menyimpan data restoran (nama, rating, ongkir, dsb).
-- `MenuItem`: Menyimpan data makanan yang terhubung ke sebuah `Restaurant` lewat Relasi (`restaurantId`).
+Mendefinisikan skema data PostgreSQL:
+- **`Restaurant`**: Data restoran (nama, gambar, rating, ongkir, kategori, promo).
+- **`MenuItem`**: Makanan/minuman yang terhubung ke `Restaurant`.
+- **`User`**: Data pengguna (email, nama, passwordHash, role: `CUSTOMER` / `DRIVER` / `ADMIN`), relasi ke `Order[]` dan `DeviceToken[]`.
+- **`Order`**: Transaksi pesanan (`userId`, `status`, `totalPrice`), relasi ke `OrderItem[]` dan `Payment?`.
+- **`OrderItem`**: Rincian makanan yang dibeli (`orderId`, `menuItemId`, `quantity`, `price`).
+- **`DeviceToken`**: Token push notification perangkat unik (`userId`, `token`, `platform`).
+- **`Payment`**: Transaksi pembayaran (`orderId`, `amount`, `status: PENDING | PAID | FAILED`, `method`, `transactionId`).
 
 ### 2. `src/server.ts`
-Ini adalah titik awal (*entry point*) aplikasi Backend. File ini:
-- Mempersiapkan *server* Express.
-- Mengaktifkan CORS agar Mobile bisa mengambil data tanpa diblokir oleh keamanan browser/perangkat.
-- Mendaftarkan semua *route* API (misal awalan `/api` diarahkan ke `restaurantRoutes.ts`).
-- Menjalankan server pada port yang ditentukan (default `3000` atau `5000`).
+Titik awal (*entry point*) backend:
+- Menyiapkan server Express dan HTTP server untuk WebSocket Socket.io.
+- Mengaktifkan CORS dan JSON body parser.
+- Middleware logging request lengkap dengan durasi respon (ms) dan preview token authorization.
+- Mendaftarkan endpoint router:
+  - `/api/auth` ➔ `authRoutes.ts`
+  - `/api/restaurants` ➔ `restaurantRoutes.ts`
+  - `/api/orders` ➔ `orderRoutes.ts`
+  - `/api/devices` ➔ `deviceRoutes.ts`
+  - `/api/payments` ➔ `paymentRoutes.ts`
+- Menyediakan endpoint health check (`GET /health`) dan monitoring socket room (`GET /api/socket-rooms`).
+- Menjalankan Socket.io event: `join-order` dan `driver-location`.
 
-### 3. `src/routes/restaurantRoutes.ts`
-File ini adalah peta jalan (*router*). Di sini didefinisikan *endpoint* API apa saja yang tersedia:
-- `GET /` $\rightarrow$ Mengambil semua restoran.
-- `GET /:id` $\rightarrow$ Mengambil detail restoran berdasarkan ID.
-- `GET /:id/menu` $\rightarrow$ Mengambil daftar menu untuk restoran tertentu.
+### 3. `src/controllers/`
+- **`authController.ts`**:
+  - `register`: Hashing password dengan `bcryptjs` lalu simpan user ke database.
+  - `login`: Verifikasi kredensial dan generate JWT Token dengan payload `{ userId, role }`.
+- **`restaurantController.ts`**:
+  - `getAllRestaurants`: Mengambil daftar restoran beserta kategorinya.
+  - `getRestaurantById`: Mengambil restoran spesifik.
+  - `getRestaurantMenu`: Mengambil menu restoran tertentu.
+- **`orderController.ts`**:
+  - `createOrder`: Menghitung total harga dan menyimpan order beserta `orderItems`.
+  - `getMyOrders`: Mengambil riwayat pesanan milik user aktif dengan relasi menu, payment, serta dukungan paginasi database (`skip`, `take`, `page`, `limit`).
+  - `getOrderById`: Mengambil detail pesanan tertentu beserta item dan pembayarannya.
+- **`deviceController.ts`**:
+  - `registerDevice`: Menyimpan token push notification perangkat user ke database dengan mekanisme `prisma.deviceToken.upsert`.
+- **`paymentController.ts`**:
+  - `createPayment`: Membuat record pembayaran untuk order dengan status `PENDING`.
+  - `simulatePayment`: Mensimulasikan pembayaran (`PAID` atau `FAILED`), mengubah status order (`CONFIRMED` jika `PAID`), dan otomatis memicu push notification ke perangkat user.
+  - `getPaymentByOrderId`: Mengambil informasi pembayaran dari order terkait.
 
-### 4. `src/controllers/restaurantController.ts`
-Di sinilah logika bisnis utama (*Business Logic*) berada. Saat *route* dipanggil, fungsi di controller akan bekerja:
-- Mengambil parameter dari *request* (misalnya `req.params.id`).
-- Menggunakan `prisma` untuk berinteraksi dengan *database* (misalnya `prisma.restaurant.findMany()`).
-- Mengirimkan *response* berformat JSON kembali ke Mobile (dengan status `success: true` dan bungkus `data`).
+### 4. `src/services/notificationService.ts`
+- `getUserTokens(userId)`: Mengambil semua device token milik user.
+- `sendNotificationToUser(userId, payload)`: Mengirim push notification ke semua perangkat user melalui endpoint Expo Push API (`https://exp.host/--/api/v2/push/send`).
+- `NOTIFICATION_EVENTS`: Template notifikasi terstandar (`ORDER_CREATED`, `PAYMENT_SUCCESS`, `ORDER_CONFIRMED`, `DRIVER_ASSIGNED`, `ORDER_COMPLETED`).
 
-### 5. `src/prisma/seed.ts`
-Ini adalah skrip *seeder*. Berfungsi untuk memasukkan data awal secara otomatis ke *database* kosong agar kita punya bahan untuk dites (seperti restoran "Nasi Goreng Gila").
+### 5. `src/utils/calculateTotal.ts` & `calculateTotal.test.ts`
+- Fungsi murni (*pure function*) penghitung subtotal harga pesanan.
+- Unit test menggunakan Jest & `ts-jest` untuk menguji fungsionalitas positif dan penanganan keranjang kosong (negative test case).
 
 ---
 
-## 📱 Bagian 2: Mobile (React Native + Expo)
+## 📱 Bagian 2: Mobile (React Native + Expo SDK 57)
 Berlokasi di folder `/mobile`.
 
 ### 1. `App.tsx`
-Ini adalah titik awal aplikasi Mobile.
-- Memuat file Navigasi Utama.
-- Bisa juga digunakan untuk menaruh *Provider* pelindung aplikasi (seperti Redux, Context API, atau *Theme Provider*).
+- Root component yang membungkus aplikasi dengan `ReduxProvider`, `AuthProvider`, `CartProvider`.
+- Menyertakan komponen internal `NotificationSync` yang meminta izin notifikasi via `registerForPushNotifications()` dan menyinkronkan token perangkat ke backend saat pengguna login.
 
-### 2. `src/navigation/AppNavigator.tsx`
-Menggunakan library `@react-navigation/native-stack`. Berfungsi mengatur halaman apa saja yang ada di aplikasi dan mengatur pergerakan antar halaman.
-- `Home`: Diarahkan ke komponen `HomeScreen`.
-- `RestaurantDetail`: Diarahkan ke komponen `RestaurantDetailScreen`.
+### 2. `src/services/`
+- **`api.ts`**: Instance Axios terpusat dengan request interceptor otomatis menyisipkan header `Authorization: Bearer <token>` dari AsyncStorage dan response interceptor untuk error logging yang jelas.
+- **`notification.ts`**: Helper `expo-notifications` untuk meminta izin push notification, mengatur channel Android, dan mendaftarkan foreground notification handler.
+- **`deviceApi.ts`**: Memanggil endpoint `POST /api/devices` untuk mendaftarkan token ke server.
+- **`paymentApi.ts`**: Memanggil endpoint `POST /api/payments` dan `POST /api/payments/simulate`.
+- **`orderApi.ts`**: Memanggil endpoint order backend (`createOrder`, `getMyOrders`, `getOrderById`).
+- **`socket.ts`**: Client Socket.io dengan auto-reconnect dan helper `joinOrderRoom(orderId)`.
 
-### 3. `src/services/api.ts`
-File ini merupakan jembatan komunikasi ke Backend menggunakan **Axios**.
-- Menarik URL dari file `.env` (`EXPO_PUBLIC_API_URL`).
-- Menggunakan *interceptor* agar jika terjadi *error* (misalnya 404 atau 500), bisa otomatis masuk ke proses *error handling* atau di-*console.log*.
-- Mengekspor fungsi bantuan (helper) seperti `getRestaurants()`, `getRestaurant(id)`, dan `getMenu(id)` agar dipanggil dengan mudah oleh layar UI.
+### 3. `src/context/`
+- **`AuthContext.tsx`**: Mengelola status autentikasi pengguna, login, register, logout, serta pemulihan sesi otomatis dari `AsyncStorage`.
+- **`CartContext.tsx`**: Mengelola keranjang belanja (`items`, `addToCart`, `removeFromCart`, `clearCart`, `totalPrice`, `totalItems`).
 
-### 4. `src/screens/HomeScreen.tsx`
-Halaman utama saat aplikasi terbuka.
-- Menggunakan `useState` untuk menyimpan data `restaurants`, `loading`, dan `error`.
-- Memanfaatkan `useEffect` untuk otomatis memanggil fungsi `fetchRestaurants()` yang mengambil data dari API saat layar terbuka.
-- Melakukan *Conditional Rendering*: 
-  - Jika loading $\rightarrow$ tampilkan putaran (`ActivityIndicator`)
-  - Jika error $\rightarrow$ tampilkan pesan gagal merah dan tombol Coba Lagi
-  - Jika sukses $\rightarrow$ *mapping* data restoran menjadi kumpulan komponen `<RestaurantCard />`.
+### 4. `src/store/` (Redux Toolkit)
+- **`orderSlice.ts`**: Mengatur status alur transaksi order (`idle`, `loading`, `success`, `failed`), `items`, dan `orderId`.
 
-### 5. `src/screens/RestaurantDetailScreen.tsx`
-Halaman detail saat sebuah restoran diklik.
-- Menangkap data restoran yang dilempar dari layar sebelumnya lewat parameter navigasi (`route.params.restaurant`).
-- Menggunakan `useEffect` untuk melakukan pemanggilan fungsi `fetchMenu()` dengan melempar ID restoran tersebut.
-- Menampilkan UI data detail restoran (gambar besar di atas, nama, rating) dan melakukan *mapping* `menuItems` menjadi baris-baris daftar makanan.
-
-### 6. Folder `src/components/`
-Berisi potongan UI yang dapat digunakan kembali (*reusable*):
-- `SearchBar.tsx`: Komponen untuk kotak pencarian visual.
-- `CategoryItem.tsx`: Kotak kecil untuk ikon kategori (misal: "Terdekat", "Promo").
-- `RestaurantCard.tsx`: Komponen kartu restoran yang menerima struktur data mentah dari `HomeScreen` lalu menampilkannya secara rapi dengan gambar dan teks.
+### 5. `src/screens/`
+- **`HomeScreen.tsx`**: Menampilkan daftar restoran, banner promosi, kategori, dan tombol pintas navigasi.
+- **`RestaurantDetailScreen.tsx`**: Menampilkan detail restoran dan daftar menu dengan tombol tambah/kurang ke keranjang belanja.
+- **`CheckoutScreen.tsx`**:
+  - Ringkasan alamat pengiriman dan daftar menu yang dipesan.
+  - Pemilihan metode pembayaran (QRIS, GoPay, Virtual Account, Tunai).
+  - Eksekusi pembuatan order dan transaksi pembayaran.
+  - **Payment Simulator Modal**: Menguji simulasi pembayaran `PAID` atau `FAILED` secara langsung.
+  - Mengosongkan keranjang belanja setelah pembayaran berhasil dan menyediakan tombol navigasi ke pelacakan kurir.
+- **`OrderHistoryScreen.tsx`**: Menampilkan riwayat pesanan dengan `FlatList`, status order, status pembayaran, dan metode bayar.
+- **`OrderTrackingScreen.tsx`**: Pelacakan posisi kurir di peta OpenStreetMap + Leaflet secara live via Socket.io.
+- **`DriverSimulatorScreen.tsx`**: Simulasi driver bergerak menyusuri titik jalan Jakarta untuk menguji live tracking.
 
 ---
 
-## 🔄 Rangkuman Alur Kerja (Workflow)
-Mari kita simulasikan apa yang terjadi secara program saat Anda membuka aplikasi:
+## 🔄 Rangkuman Alur Kerja Lengkap (End-to-End Flow)
 
-1. User membuka aplikasi Mobile, `HomeScreen` muncul di layar.
-2. `HomeScreen` menjalankan *hook* `useEffect`, yang kemudian memanggil `api.get('/restaurants')` via Axios.
-3. *Request HTTP* meluncur ke Backend, diterima di `server.ts`, lalu diarahkan ke `restaurantRoutes.ts`.
-4. Router meneruskannya ke `restaurantController.ts` pada fungsi `getAllRestaurants`.
-5. Controller meminta bantuan Prisma untuk menarik data dari PostgreSQL (`prisma.restaurant.findMany()`).
-6. Data berhasil didapat, lalu dibungkus ke format JSON dan dikembalikan (*return*) sebagai respon HTTP ke Axios di Mobile.
-7. `HomeScreen` menerima data tersebut, merubah status `loading` menjadi `false`, dan mengisi state `restaurants` dengan data.
-8. UI React Native langsung ter-update otomatis (*re-render*), mengubah *loading spinner* menjadi daftar kumpulan kartu restoran.
-9. Saat satu kartu restoran diklik, objek restoran tersebut dilempar ke `RestaurantDetailScreen`, dan siklus pemanggilan API yang sama berulang lagi untuk menarik daftar Menu khusus restoran tersebut!
+Berikut skenario saat pengguna melakukan pemesanan lengkap:
+
+1. **Login & Sinkronisasi Token**:
+   Pengguna login di `LoginScreen`. Token JWT disimpan di `AsyncStorage`. Komponen `NotificationSync` otomatis mengirimkan token push notification ke `POST /api/devices`.
+2. **Pilih Restoran & Menu**:
+   Pengguna memilih menu di `RestaurantDetailScreen`. Setiap klik `(+)` memperbarui `CartContext`.
+3. **Checkout**:
+   Pengguna membuka `CheckoutScreen`, memilih metode pembayaran (misal: QRIS), lalu menekan tombol "Lanjut ke Pembayaran".
+4. **Pembuatan Order & Transaksi Pembayaran**:
+   - Mobile memanggil `POST /api/orders` ➔ Order berstatus `PENDING` tersimpan di database.
+   - Mobile memanggil `POST /api/payments` ➔ Payment berstatus `PENDING` tersimpan di database.
+5. **Simulasi Pembayaran (Simulator Modal)**:
+   - Pengguna menekan tombol "Simulasi Berhasil (PAID)".
+   - Mobile memanggil `POST /api/payments/simulate` dengan status `PAID`.
+   - Backend mengupdate payment menjadi `PAID` dan order menjadi `CONFIRMED`.
+   - Backend memicu fungsi `sendNotificationToUser` yang mengirim push notification ke perangkat user.
+   - Keranjang belanja dikosongkan (`clearCart()`).
+6. **Pelacakan Kurir Real-Time**:
+   Pengguna diarahkan ke `OrderTrackingScreen`. Client bergabung ke Socket room `order:{orderId}` dan mendengarkan pergerakan kurir secara live.
+7. **Riwayat Pesanan**:
+   Di `OrderHistoryScreen`, pesanan tercatat dengan status `CONFIRMED` dan pembayaran `QRIS • PAID`.
