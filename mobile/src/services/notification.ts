@@ -1,6 +1,14 @@
+import { Platform, LogBox } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+
+LogBox.ignoreLogs([
+  'expo-notifications: Android Push notifications',
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+  'shouldShowAlert is deprecated',
+  'No "projectId" found',
+]);
+
 
 // Set notification handler so notifications display banner and sound while app is in foreground
 Notifications.setNotificationHandler({

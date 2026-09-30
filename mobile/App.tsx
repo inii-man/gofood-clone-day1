@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LogBox } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Provider as ReduxProvider } from 'react-redux';
 import { store } from './src/store/store';
@@ -7,6 +8,15 @@ import { CartProvider } from './src/context/CartContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { registerForPushNotifications } from './src/services/notification';
 import { registerDevice } from './src/services/deviceApi';
+
+// Abaikan warning bawaan Expo Go Android SDK 53 agar tidak memunculkan banner kuning/merah di layar
+LogBox.ignoreLogs([
+  'expo-notifications: Android Push notifications',
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+  '[expo-notifications]: `shouldShowAlert` is deprecated',
+  'No "projectId" found',
+]);
+
 
 function NotificationSync() {
   const { token: authToken } = useAuth();
