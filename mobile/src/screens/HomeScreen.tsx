@@ -1,11 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import SearchBar from '../components/SearchBar';
 import CategoryItem from '../components/CategoryItem';
 import RestaurantCard from '../components/RestaurantCard';
 import { categories } from '../data/dummy';
 import { getRestaurants } from '../services/api';
+import { socket } from '../services/socket';
 import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen({ navigation }: any) {
@@ -14,32 +24,56 @@ export default function HomeScreen({ navigation }: any) {
   const [restaurants, setRestaurants] = useState<any[]>([]);
   // State untuk menandakan apakah data sedang di-load (proses fetching)
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   // State untuk menyimpan pesan error jika koneksi ke server gagal
   const [error, setError] = useState<string | null>(null);
 
-  // useEffect dipanggil otomatis saat layar HomeScreen pertama kali dibuka
-  useEffect(() => {
-    fetchRestaurants();
-  }, []);
-
   // Fungsi untuk mengambil data restoran dari backend
-  const fetchRestaurants = async () => {
-    setLoading(true); // Tampilkan indikator loading
-    setError(null);   // Reset error sebelumnya (jika ada)
+  const fetchRestaurants = useCallback(async (isPullRefresh = false) => {
+    if (!isPullRefresh) setLoading(true);
+    setError(null);
     try {
-      // Memanggil fungsi getRestaurants() dari services/api.ts
+      console.log('🔄 [HOME] Mengambil data restoran terbaru dari backend...');
       const response = await getRestaurants();
-      // Menyimpan data yang didapat ke state restaurants
-      setRestaurants(response.data.data);
+      console.log(`✅ [HOME] Berhasil memuat ${response.data.data?.length || 0} restoran.`);
+      setRestaurants(response.data.data || []);
     } catch (err) {
       console.error('Error fetching restaurants:', err);
-      // Menampilkan pesan error jika server mati atau ada kendala jaringan
       setError('Gagal terhubung ke server');
     } finally {
-      // Sembunyikan indikator loading setelah proses selesai (berhasil/gagal)
       setLoading(false);
+      setRefreshing(false);
     }
+  }, []);
+
+  // Auto-refresh saat pertama kali dibuka & setiap kali layar Home difokuskan kembali
+  useFocusEffect(
+    useCallback(() => {
+      fetchRestaurants();
+    }, [fetchRestaurants])
+  );
+
+  // Real-time listener: jika ada update dari backend
+  useEffect(() => {
+    const handleUpdate = () => {
+      console.log('⚡ [SOCKET] Menerima sinyal pembaruan data restoran');
+      fetchRestaurants(true);
+    };
+
+    socket.on('restaurants-updated', handleUpdate);
+    socket.on('data-updated', handleUpdate);
+
+    return () => {
+      socket.off('restaurants-updated', handleUpdate);
+      socket.off('data-updated', handleUpdate);
+    };
+  }, [fetchRestaurants]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchRestaurants(true);
   };
+
 
   return (
     <View style={styles.container}>
@@ -80,9 +114,20 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       {/* ScrollView digunakan agar halaman bisa di-scroll ke bawah */}
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#00AA13']}
+            tintColor="#00AA13"
+          />
+        }
+      >
         {/* Komponen SearchBar (belum berfungsi untuk pencarian sungguhan, hanya UI) */}
         <SearchBar placeholder="Cari restoran atau makanan..." />
+
 
         <Text style={styles.sectionTitle}>Kategori</Text>
         {/* Daftar kategori yang bisa di-scroll menyamping (horizontal) */}
@@ -112,9 +157,10 @@ export default function HomeScreen({ navigation }: any) {
           // Jika error = true (ada pesan error), tampilkan tombol Coba Lagi
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchRestaurants}>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchRestaurants()}>
               <Text style={styles.retryText}>Coba Lagi</Text>
             </TouchableOpacity>
+
           </View>
         ) : (
           // Jika sukses (loading false & error null), tampilkan daftar restoran
